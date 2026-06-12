@@ -210,9 +210,10 @@ impl CarbonMintContract {
     /// Transfers `amount` credits of `batch_id` from `from` to `to` directly,
     /// without going through the marketplace listing.
     ///
-    /// Requires authorization from `from`. Returns [`Error::BatchNotFound`] for
-    /// an unknown batch and [`Error::InsufficientBalance`] if `from` does not
-    /// hold enough credits.
+    /// Requires authorization from `from`. Returns [`Error::SameAccount`] if
+    /// `from` and `to` are equal, [`Error::BatchNotFound`] for an unknown
+    /// batch, and [`Error::InsufficientBalance`] if `from` does not hold enough
+    /// credits.
     pub fn transfer(
         env: Env,
         from: Address,
@@ -224,6 +225,10 @@ impl CarbonMintContract {
 
         if amount <= 0 {
             return Err(Error::InvalidAmount);
+        }
+
+        if from == to {
+            return Err(Error::SameAccount);
         }
 
         if !storage::has_batch(&env, batch_id) {

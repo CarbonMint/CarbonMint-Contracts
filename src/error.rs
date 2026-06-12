@@ -23,4 +23,6 @@ pub enum Error {
     NotListed = 8,
     /// The contract is paused and minting is temporarily disabled.
     Paused = 9,
+    /// The source and destination of a transfer are the same account.
+    SameAccount = 10,
 }
