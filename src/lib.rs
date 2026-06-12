@@ -11,10 +11,13 @@ mod events;
 mod storage;
 mod types;
 
+#[cfg(test)]
+mod test;
+
 use soroban_sdk::{contract, contractimpl, Address, Env, String};
 
-use crate::error::Error;
-use crate::types::{Batch, Retirement};
+pub use crate::error::Error;
+pub use crate::types::{Batch, Retirement};
 
 #[contract]
 pub struct CarbonMintContract;
