@@ -92,6 +92,19 @@ pub fn set_paused(env: &Env, paused: bool) {
     env.storage().instance().set(&DataKey::Paused, &paused);
 }
 
+/// Reads the running total of credits minted across all batches.
+pub fn get_total_minted(env: &Env) -> i128 {
+    env.storage()
+        .instance()
+        .get(&DataKey::TotalMinted)
+        .unwrap_or(0i128)
+}
+
+/// Writes the running total of credits minted across all batches.
+pub fn set_total_minted(env: &Env, value: i128) {
+    env.storage().instance().set(&DataKey::TotalMinted, &value);
+}
+
 /// Returns `true` if a batch with the given id exists.
 pub fn has_batch(env: &Env, id: u64) -> bool {
     env.storage().persistent().has(&DataKey::Batch(id))

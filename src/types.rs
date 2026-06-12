@@ -12,6 +12,8 @@ pub enum DataKey {
     RetirementCounter,
     /// Whether minting is currently paused by the admin (instance storage).
     Paused,
+    /// Running total of credits minted across all batches (instance storage).
+    TotalMinted,
     /// A batch record keyed by batch id (persistent storage).
     Batch(u64),
     /// A balance keyed by (owner, batch id) (persistent storage).
