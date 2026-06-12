@@ -207,3 +207,23 @@ fn test_buy_requires_buyer_auth() {
     // Buyer only authorizes the top-level call, no sub-invocations.
     assert!(invocation.sub_invocations.is_empty());
 }
+
+#[test]
+fn test_circulating_supply_decreases_on_retire() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    assert_eq!(client.circulating_supply(&id), 1_000);
+
+    client.retire(&issuer, &id, &400);
+    assert_eq!(client.circulating_supply(&id), 600);
+
+    // Trading does not change circulating supply, only retiring does.
+    let buyer = Address::generate(&env);
+    client.buy(&buyer, &id, &100);
+    assert_eq!(client.circulating_supply(&id), 600);
+}
