@@ -11,9 +11,10 @@ mod events;
 mod storage;
 mod types;
 
-use soroban_sdk::{contract, contractimpl, Address, Env};
+use soroban_sdk::{contract, contractimpl, Address, Env, String};
 
 use crate::error::Error;
+use crate::types::Batch;
 
 #[contract]
 pub struct CarbonMintContract;
@@ -43,5 +44,49 @@ impl CarbonMintContract {
     /// Returns [`Error::NotInitialized`] if the contract has not been set up.
     pub fn get_admin(env: Env) -> Result<Address, Error> {
         storage::get_admin(&env).ok_or(Error::NotInitialized)
+    }
+
+    /// Mints a new batch of carbon credits and returns its id.
+    ///
+    /// Requires authorization from `issuer`. The full `amount` is credited to
+    /// the issuer's balance for the new batch. The batch is created listed at
+    /// the supplied `price`.
+    pub fn mint_batch(
+        env: Env,
+        issuer: Address,
+        project_id: String,
+        vintage: u32,
+        amount: i128,
+        price: i128,
+    ) -> Result<u64, Error> {
+        if !storage::has_admin(&env) {
+            return Err(Error::NotInitialized);
+        }
+        issuer.require_auth();
+
+        if amount <= 0 || price < 0 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let id = storage::get_batch_counter(&env)
+            .checked_add(1)
+            .ok_or(Error::Overflow)?;
+
+        let batch = Batch {
+            id,
+            issuer: issuer.clone(),
+            project_id,
+            vintage,
+            supply: amount,
+            price,
+            listed: true,
+        };
+        storage::set_batch(&env, &batch);
+        storage::set_balance(&env, &issuer, id, amount);
+        storage::set_batch_counter(&env, id);
+        storage::extend_instance(&env);
+
+        events::minted(&env, &issuer, id, amount);
+        Ok(id)
     }
 }
