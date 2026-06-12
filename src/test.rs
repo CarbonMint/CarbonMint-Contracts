@@ -149,6 +149,40 @@ fn test_retire_burns_and_issues_certificate() {
 }
 
 #[test]
+fn test_retire_records_self_beneficiary() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    let cert_id = client.retire(&issuer, &id, &100);
+    let cert = client.get_retirement(&cert_id);
+    assert_eq!(cert.beneficiary, String::from_str(&env, "self"));
+}
+
+#[test]
+fn test_retire_for_records_named_beneficiary() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    let beneficiary = String::from_str(&env, "ACME Airlines");
+    let cert_id = client.retire_for(&issuer, &id, &250, &beneficiary);
+
+    let cert = client.get_retirement(&cert_id);
+    assert_eq!(cert.holder, issuer);
+    assert_eq!(cert.amount, 250);
+    assert_eq!(cert.beneficiary, beneficiary);
+    assert_eq!(client.balance_of(&issuer, &id), 750);
+    assert_eq!(client.total_retired(&id), 250);
+}
+
+#[test]
 fn test_total_retired_accumulates() {
     let (env, client, admin) = setup();
     env.mock_all_auths();
