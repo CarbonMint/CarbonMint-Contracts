@@ -7,6 +7,7 @@
 //! manner: balances are keyed by `(owner, batch_id)`.
 
 mod error;
+mod types;
 
 use soroban_sdk::{contract, contractimpl, Env};
 
