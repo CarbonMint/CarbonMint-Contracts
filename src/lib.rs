@@ -290,6 +290,14 @@ impl CarbonMintContract {
         storage::get_retirement_counter(&env)
     }
 
+    /// Returns whether `batch_id` is currently listed for sale.
+    ///
+    /// Returns [`Error::BatchNotFound`] if no such batch exists.
+    pub fn is_listed(env: Env, batch_id: u64) -> Result<bool, Error> {
+        let batch = storage::get_batch(&env, batch_id).ok_or(Error::BatchNotFound)?;
+        Ok(batch.listed)
+    }
+
     /// Returns the still-circulating supply for `batch_id`, i.e. the original
     /// minted supply minus the amount that has been retired.
     ///
