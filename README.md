@@ -54,3 +54,51 @@ Balances are keyed by `(owner, batch_id)`.
 | 5 | `InsufficientBalance` | Holder lacks enough credits. |
 | 6 | `Unauthorized` | Caller not permitted. |
 | 7 | `Overflow` | Arithmetic overflow. |
+
+## Build
+
+The contract targets `wasm32-unknown-unknown` and is built as a `cdylib`.
+
+```sh
+make build      # cargo build --target wasm32-unknown-unknown --release
+make test       # run the unit test suite
+make fmt        # format the source tree
+make clippy     # lint with warnings denied
+```
+
+The compiled WASM is written to
+`target/wasm32-unknown-unknown/release/carbonmint_contract.wasm`.
+
+## Deploy
+
+Deployment uses the [Stellar CLI](https://developers.stellar.org/docs/tools/cli).
+
+```sh
+# optional: shrink the wasm before deploying
+make optimize
+
+# deploy to testnet using the `default` identity
+make deploy NETWORK=testnet SOURCE=default
+```
+
+## Example flow
+
+```sh
+# 1. initialize the registry
+stellar contract invoke ... -- initialize --admin <ADMIN>
+
+# 2. mint a batch (returns the batch id)
+stellar contract invoke ... -- mint_batch \
+  --issuer <ISSUER> --project_id "PROJ-001" --vintage 2024 \
+  --amount 1000 --price 5
+
+# 3. a buyer purchases credits
+stellar contract invoke ... -- buy --buyer <BUYER> --batch_id 1 --amount 100
+
+# 4. the buyer retires credits and receives a certificate id
+stellar contract invoke ... -- retire --holder <BUYER> --batch_id 1 --amount 100
+```
+
+## License
+
+Licensed under the [MIT License](LICENSE).
