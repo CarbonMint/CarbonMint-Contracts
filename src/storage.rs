@@ -1,3 +1,10 @@
+//! Storage helpers for the CarbonMint contract.
+//!
+//! Instance storage holds the admin address and the batch / retirement
+//! counters. Persistent storage holds the per-batch records, per-`(owner,
+//! batch)` balances, retirement certificates, and per-batch retired totals.
+//! All persistent reads and writes bump the entry's time-to-live.
+
 use soroban_sdk::{Address, Env};
 
 use crate::types::{Batch, DataKey, Retirement};
