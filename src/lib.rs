@@ -209,4 +209,16 @@ impl CarbonMintContract {
         events::retired(&env, &holder, batch_id, amount, cert_id);
         Ok(cert_id)
     }
+
+    /// Returns the retirement certificate for `cert_id`.
+    ///
+    /// Returns [`Error::BatchNotFound`] if no such certificate exists.
+    pub fn get_retirement(env: Env, cert_id: u64) -> Result<Retirement, Error> {
+        storage::get_retirement(&env, cert_id).ok_or(Error::BatchNotFound)
+    }
+
+    /// Returns the total amount of credits retired for `batch_id`.
+    pub fn total_retired(env: Env, batch_id: u64) -> i128 {
+        storage::get_total_retired(&env, batch_id)
+    }
 }
