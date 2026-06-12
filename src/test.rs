@@ -123,3 +123,27 @@ fn test_buy_unknown_batch_fails() {
     let buyer = Address::generate(&env);
     client.buy(&buyer, &999, &1);
 }
+
+#[test]
+fn test_retire_burns_and_issues_certificate() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    let cert_id = client.retire(&issuer, &id, &400);
+    assert_eq!(cert_id, 1);
+
+    // Burned credits leave the holder's balance.
+    assert_eq!(client.balance_of(&issuer, &id), 600);
+
+    let cert = client.get_retirement(&cert_id);
+    assert_eq!(cert.id, 1);
+    assert_eq!(cert.batch_id, id);
+    assert_eq!(cert.holder, issuer);
+    assert_eq!(cert.amount, 400);
+
+    assert_eq!(client.retirement_count(), 1);
+}
