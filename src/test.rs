@@ -351,6 +351,26 @@ fn test_unknown_batch_query_returns_zero_balance() {
 }
 
 #[test]
+fn test_total_minted_accumulates_across_batches() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    assert_eq!(client.total_minted(), 0);
+
+    let issuer = Address::generate(&env);
+    client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+    client.mint_batch(&issuer, &project_id(&env), &2025, &500, &7);
+
+    assert_eq!(client.total_minted(), 1_500);
+
+    // Retiring credits does not reduce the cumulative minted total.
+    client.retire(&issuer, &1, &200);
+    assert_eq!(client.total_minted(), 1_500);
+    assert_eq!(client.total_retired(&1), 200);
+}
+
+#[test]
 fn test_set_paused_blocks_minting() {
     let (env, client, admin) = setup();
     env.mock_all_auths();
