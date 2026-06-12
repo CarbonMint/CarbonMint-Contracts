@@ -117,9 +117,14 @@ impl CarbonMintContract {
             price,
             listed: true,
         };
+        let total_minted = storage::get_total_minted(&env)
+            .checked_add(amount)
+            .ok_or(Error::Overflow)?;
+
         storage::set_batch(&env, &batch);
         storage::set_balance(&env, &issuer, id, amount);
         storage::set_batch_counter(&env, id);
+        storage::set_total_minted(&env, total_minted);
         storage::extend_instance(&env);
 
         events::minted(&env, &issuer, id, amount);
@@ -317,6 +322,14 @@ impl CarbonMintContract {
     /// Returns the number of retirement certificates issued so far.
     pub fn retirement_count(env: Env) -> u64 {
         storage::get_retirement_counter(&env)
+    }
+
+    /// Returns the cumulative amount of credits minted across all batches.
+    ///
+    /// This total never decreases; retirements are tracked separately via
+    /// [`total_retired`](Self::total_retired).
+    pub fn total_minted(env: Env) -> i128 {
+        storage::get_total_minted(&env)
     }
 
     /// Returns whether `batch_id` is currently listed for sale.
