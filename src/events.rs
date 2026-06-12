@@ -58,3 +58,11 @@ pub fn delisted(env: &Env, issuer: &Address, batch_id: u64) {
     let topics = (symbol_short!("delisted"), issuer.clone());
     env.events().publish(topics, batch_id);
 }
+
+/// Publishes a `transfer` event when credits move between holders directly.
+///
+/// Topics: `("transfer", from, to)`; data: `(batch_id, amount)`.
+pub fn transferred(env: &Env, from: &Address, to: &Address, batch_id: u64, amount: i128) {
+    let topics = (symbol_short!("transfer"), from.clone(), to.clone());
+    env.events().publish(topics, (batch_id, amount));
+}

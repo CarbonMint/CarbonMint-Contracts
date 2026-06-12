@@ -183,6 +183,40 @@ impl CarbonMintContract {
         Ok(())
     }
 
+    /// Transfers `amount` credits of `batch_id` from `from` to `to` directly,
+    /// without going through the marketplace listing.
+    ///
+    /// Requires authorization from `from`. Returns [`Error::BatchNotFound`] for
+    /// an unknown batch and [`Error::InsufficientBalance`] if `from` does not
+    /// hold enough credits.
+    pub fn transfer(
+        env: Env,
+        from: Address,
+        to: Address,
+        batch_id: u64,
+        amount: i128,
+    ) -> Result<(), Error> {
+        from.require_auth();
+
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+
+        if !storage::has_batch(&env, batch_id) {
+            return Err(Error::BatchNotFound);
+        }
+
+        if storage::get_balance(&env, &from, batch_id) < amount {
+            return Err(Error::InsufficientBalance);
+        }
+        if !storage::move_balance(&env, &from, &to, batch_id, amount) {
+            return Err(Error::Overflow);
+        }
+
+        events::transferred(&env, &from, &to, batch_id, amount);
+        Ok(())
+    }
+
     /// Retires (permanently burns) `amount` credits of `batch_id` held by
     /// `holder`, recording a retirement certificate and returning its id.
     ///
