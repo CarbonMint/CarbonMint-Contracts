@@ -270,3 +270,18 @@ fn test_unknown_batch_query_returns_zero_balance() {
     assert_eq!(client.balance_of(&who, &42), 0);
     assert_eq!(client.total_retired(&42), 0);
 }
+
+#[test]
+fn test_mint_emits_event() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &500, &3);
+
+    // A `minted` event must have been published for the new batch.
+    let events = env.events().all();
+    assert!(!events.is_empty());
+    assert_eq!(id, 1);
+}
