@@ -37,4 +37,11 @@ impl CarbonMintContract {
         storage::extend_instance(&env);
         Ok(())
     }
+
+    /// Returns the current registry admin address.
+    ///
+    /// Returns [`Error::NotInitialized`] if the contract has not been set up.
+    pub fn get_admin(env: Env) -> Result<Address, Error> {
+        storage::get_admin(&env).ok_or(Error::NotInitialized)
+    }
 }
