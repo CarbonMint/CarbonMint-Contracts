@@ -147,3 +147,35 @@ fn test_retire_burns_and_issues_certificate() {
 
     assert_eq!(client.retirement_count(), 1);
 }
+
+#[test]
+fn test_total_retired_accumulates() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    assert_eq!(client.total_retired(&id), 0);
+
+    client.retire(&issuer, &id, &100);
+    client.retire(&issuer, &id, &250);
+
+    assert_eq!(client.total_retired(&id), 350);
+    assert_eq!(client.balance_of(&issuer, &id), 650);
+    assert_eq!(client.retirement_count(), 2);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #5)")]
+fn test_retire_insufficient_balance_fails() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &100, &5);
+
+    client.retire(&issuer, &id, &101);
+}
