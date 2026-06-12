@@ -21,4 +21,6 @@ pub enum Error {
     Overflow = 7,
     /// The batch is not currently listed for sale.
     NotListed = 8,
+    /// The contract is paused and minting is temporarily disabled.
+    Paused = 9,
 }
