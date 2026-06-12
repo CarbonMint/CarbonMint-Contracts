@@ -48,6 +48,25 @@ pub struct Batch {
     pub listed: bool,
 }
 
+/// A compact view of a batch's marketplace listing state.
+///
+/// Returned by read-only queries so clients can render a batch's sale status
+/// without fetching the full [`Batch`] record.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Listing {
+    /// The batch the listing refers to.
+    pub batch_id: u64,
+    /// The account offering the credits for sale.
+    pub seller: Address,
+    /// The current unit price.
+    pub price: i128,
+    /// Whether the batch is currently listed for sale.
+    pub listed: bool,
+    /// The amount of credits the seller still holds and can sell.
+    pub available: i128,
+}
+
 /// A retirement certificate recording the permanent burning of credits.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -17,7 +17,7 @@ mod test;
 use soroban_sdk::{contract, contractimpl, contractmeta, Address, Env, String};
 
 pub use crate::error::Error;
-pub use crate::types::{Batch, Retirement};
+pub use crate::types::{Batch, Listing, Retirement};
 
 /// Monotonic on-chain version of the contract logic.
 pub const VERSION: u32 = 1;
@@ -338,6 +338,22 @@ impl CarbonMintContract {
     pub fn is_listed(env: Env, batch_id: u64) -> Result<bool, Error> {
         let batch = storage::get_batch(&env, batch_id).ok_or(Error::BatchNotFound)?;
         Ok(batch.listed)
+    }
+
+    /// Returns a compact [`Listing`] view for `batch_id`, combining its sale
+    /// status, price, seller and the amount the seller still holds.
+    ///
+    /// Returns [`Error::BatchNotFound`] if no such batch exists.
+    pub fn listing_info(env: Env, batch_id: u64) -> Result<Listing, Error> {
+        let batch = storage::get_batch(&env, batch_id).ok_or(Error::BatchNotFound)?;
+        let available = storage::get_balance(&env, &batch.issuer, batch_id);
+        Ok(Listing {
+            batch_id,
+            seller: batch.issuer,
+            price: batch.price,
+            listed: batch.listed,
+            available,
+        })
     }
 
     /// Returns the still-circulating supply for `batch_id`, i.e. the original
