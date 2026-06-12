@@ -6,6 +6,8 @@
 //! Soroban platform. Carbon credits are tracked per batch in a semi-fungible
 //! manner: balances are keyed by `(owner, batch_id)`.
 
+mod error;
+
 use soroban_sdk::{contract, contractimpl, Env};
 
 #[contract]
