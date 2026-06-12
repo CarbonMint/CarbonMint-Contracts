@@ -1,6 +1,6 @@
 use soroban_sdk::{Address, Env};
 
-use crate::types::DataKey;
+use crate::types::{Batch, DataKey, Retirement};
 
 /// Number of ledgers (~5s each) after which persistent entries expire if not
 /// bumped. Roughly 30 days.
@@ -70,4 +70,26 @@ pub fn set_retirement_counter(env: &Env, value: u64) {
     env.storage()
         .instance()
         .set(&DataKey::RetirementCounter, &value);
+}
+
+/// Returns `true` if a batch with the given id exists.
+pub fn has_batch(env: &Env, id: u64) -> bool {
+    env.storage().persistent().has(&DataKey::Batch(id))
+}
+
+/// Reads a batch record by id.
+pub fn get_batch(env: &Env, id: u64) -> Option<Batch> {
+    let key = DataKey::Batch(id);
+    let batch = env.storage().persistent().get(&key);
+    if batch.is_some() {
+        extend_persistent(env, &key);
+    }
+    batch
+}
+
+/// Writes a batch record.
+pub fn set_batch(env: &Env, batch: &Batch) {
+    let key = DataKey::Batch(batch.id);
+    env.storage().persistent().set(&key, batch);
+    extend_persistent(env, &key);
 }
