@@ -245,6 +245,39 @@ fn test_list_updates_price() {
 }
 
 #[test]
+fn test_transfer_moves_credits() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    client.transfer(&issuer, &recipient, &id, &250);
+
+    assert_eq!(client.balance_of(&issuer, &id), 750);
+    assert_eq!(client.balance_of(&recipient, &id), 250);
+
+    // Transferring does not affect circulating supply.
+    assert_eq!(client.circulating_supply(&id), 1_000);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #5)")]
+fn test_transfer_insufficient_balance_fails() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &100, &5);
+
+    client.transfer(&issuer, &recipient, &id, &101);
+}
+
+#[test]
 fn test_unlist_marks_batch_not_listed() {
     let (env, client, admin) = setup();
     env.mock_all_auths();
