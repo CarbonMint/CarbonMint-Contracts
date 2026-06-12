@@ -110,3 +110,33 @@ pub fn set_balance(env: &Env, owner: &Address, batch_id: u64, amount: i128) {
     env.storage().persistent().set(&key, &amount);
     extend_persistent(env, &key);
 }
+
+/// Reads a retirement certificate by id.
+pub fn get_retirement(env: &Env, id: u64) -> Option<Retirement> {
+    let key = DataKey::Retirement(id);
+    let cert = env.storage().persistent().get(&key);
+    if cert.is_some() {
+        extend_persistent(env, &key);
+    }
+    cert
+}
+
+/// Writes a retirement certificate.
+pub fn set_retirement(env: &Env, cert: &Retirement) {
+    let key = DataKey::Retirement(cert.id);
+    env.storage().persistent().set(&key, cert);
+    extend_persistent(env, &key);
+}
+
+/// Reads the running total of retired credits for `batch_id`.
+pub fn get_total_retired(env: &Env, batch_id: u64) -> i128 {
+    let key = DataKey::TotalRetired(batch_id);
+    env.storage().persistent().get(&key).unwrap_or(0i128)
+}
+
+/// Writes the running total of retired credits for `batch_id`.
+pub fn set_total_retired(env: &Env, batch_id: u64, amount: i128) {
+    let key = DataKey::TotalRetired(batch_id);
+    env.storage().persistent().set(&key, &amount);
+    extend_persistent(env, &key);
+}
