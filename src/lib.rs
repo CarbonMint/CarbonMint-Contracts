@@ -14,7 +14,7 @@ mod types;
 use soroban_sdk::{contract, contractimpl, Address, Env, String};
 
 use crate::error::Error;
-use crate::types::Batch;
+use crate::types::{Batch, Retirement};
 
 #[contract]
 pub struct CarbonMintContract;
@@ -157,5 +157,56 @@ impl CarbonMintContract {
 
         events::bought(&env, &buyer, &seller, batch_id, amount, batch.price);
         Ok(())
+    }
+
+    /// Retires (permanently burns) `amount` credits of `batch_id` held by
+    /// `holder`, recording a retirement certificate and returning its id.
+    ///
+    /// Requires authorization from `holder`. The holder's balance is reduced
+    /// and the batch's running retired total is increased.
+    pub fn retire(
+        env: Env,
+        holder: Address,
+        batch_id: u64,
+        amount: i128,
+    ) -> Result<u64, Error> {
+        holder.require_auth();
+
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+
+        if !storage::has_batch(&env, batch_id) {
+            return Err(Error::BatchNotFound);
+        }
+
+        let balance = storage::get_balance(&env, &holder, batch_id);
+        if balance < amount {
+            return Err(Error::InsufficientBalance);
+        }
+
+        let new_balance = balance.checked_sub(amount).ok_or(Error::Overflow)?;
+        storage::set_balance(&env, &holder, batch_id, new_balance);
+
+        let retired_total = storage::get_total_retired(&env, batch_id)
+            .checked_add(amount)
+            .ok_or(Error::Overflow)?;
+        storage::set_total_retired(&env, batch_id, retired_total);
+
+        let cert_id = storage::get_retirement_counter(&env)
+            .checked_add(1)
+            .ok_or(Error::Overflow)?;
+        let cert = Retirement {
+            id: cert_id,
+            batch_id,
+            holder: holder.clone(),
+            amount,
+        };
+        storage::set_retirement(&env, &cert);
+        storage::set_retirement_counter(&env, cert_id);
+        storage::extend_instance(&env);
+
+        events::retired(&env, &holder, batch_id, amount, cert_id);
+        Ok(cert_id)
     }
 }
