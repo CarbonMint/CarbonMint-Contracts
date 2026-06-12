@@ -227,3 +227,26 @@ fn test_circulating_supply_decreases_on_retire() {
     client.buy(&buyer, &id, &100);
     assert_eq!(client.circulating_supply(&id), 600);
 }
+
+#[test]
+fn test_list_updates_price() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+    assert_eq!(client.get_batch(&id).price, 5);
+
+    client.list(&id, &9);
+    let batch = client.get_batch(&id);
+    assert_eq!(batch.price, 9);
+    assert!(batch.listed);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #2)")]
+fn test_get_admin_uninitialized_fails() {
+    let (_env, client, _admin) = setup();
+    client.get_admin();
+}
