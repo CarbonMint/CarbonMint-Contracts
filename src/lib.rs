@@ -123,4 +123,39 @@ impl CarbonMintContract {
         events::listed(&env, &batch.issuer, batch_id, price);
         Ok(())
     }
+
+    /// Buys `amount` credits of `batch_id` from the batch issuer/seller.
+    ///
+    /// Requires authorization from `buyer`. Payment is mocked: this transfers
+    /// credits from the seller to the buyer and emits a `bought` event with the
+    /// quoted price, but does not move an underlying payment asset.
+    pub fn buy(env: Env, buyer: Address, batch_id: u64, amount: i128) -> Result<(), Error> {
+        buyer.require_auth();
+
+        if amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let batch = storage::get_batch(&env, batch_id).ok_or(Error::BatchNotFound)?;
+        let seller = batch.issuer.clone();
+
+        let seller_balance = storage::get_balance(&env, &seller, batch_id);
+        if seller_balance < amount {
+            return Err(Error::InsufficientBalance);
+        }
+
+        let new_seller = seller_balance
+            .checked_sub(amount)
+            .ok_or(Error::Overflow)?;
+        let buyer_balance = storage::get_balance(&env, &buyer, batch_id);
+        let new_buyer = buyer_balance
+            .checked_add(amount)
+            .ok_or(Error::Overflow)?;
+
+        storage::set_balance(&env, &seller, batch_id, new_seller);
+        storage::set_balance(&env, &buyer, batch_id, new_buyer);
+
+        events::bought(&env, &buyer, &seller, batch_id, amount, batch.price);
+        Ok(())
+    }
 }
