@@ -96,4 +96,11 @@ impl CarbonMintContract {
     pub fn get_batch(env: Env, batch_id: u64) -> Result<Batch, Error> {
         storage::get_batch(&env, batch_id).ok_or(Error::BatchNotFound)
     }
+
+    /// Returns the credit balance held by `owner` for `batch_id`.
+    ///
+    /// Holders with no credits return zero.
+    pub fn balance_of(env: Env, owner: Address, batch_id: u64) -> i128 {
+        storage::get_balance(&env, &owner, batch_id)
+    }
 }
