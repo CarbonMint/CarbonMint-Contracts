@@ -93,3 +93,20 @@ pub fn set_batch(env: &Env, batch: &Batch) {
     env.storage().persistent().set(&key, batch);
     extend_persistent(env, &key);
 }
+
+/// Reads the balance of `owner` for `batch_id`, defaulting to zero.
+pub fn get_balance(env: &Env, owner: &Address, batch_id: u64) -> i128 {
+    let key = DataKey::Balance(owner.clone(), batch_id);
+    let balance = env.storage().persistent().get(&key).unwrap_or(0i128);
+    if balance != 0 {
+        extend_persistent(env, &key);
+    }
+    balance
+}
+
+/// Writes the balance of `owner` for `batch_id`.
+pub fn set_balance(env: &Env, owner: &Address, batch_id: u64, amount: i128) {
+    let key = DataKey::Balance(owner.clone(), batch_id);
+    env.storage().persistent().set(&key, &amount);
+    extend_persistent(env, &key);
+}
