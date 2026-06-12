@@ -20,7 +20,10 @@ pub use crate::error::Error;
 pub use crate::types::{Batch, Listing, Retirement};
 
 /// Monotonic on-chain version of the contract logic.
-pub const VERSION: u32 = 1;
+///
+/// Bumped to `2` alongside the pause control, admin rotation, beneficiary
+/// retirements and new view getters.
+pub const VERSION: u32 = 2;
 
 contractmeta!(key = "name", val = "CarbonMint");
 contractmeta!(
