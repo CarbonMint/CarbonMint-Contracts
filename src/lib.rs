@@ -136,6 +136,22 @@ impl CarbonMintContract {
         Ok(())
     }
 
+    /// Removes `batch_id` from sale without changing its price.
+    ///
+    /// Only the batch issuer may call this. While delisted, [`buy`](Self::buy)
+    /// rejects purchases with [`Error::NotListed`]. Requires authorization from
+    /// the issuer recorded on the batch.
+    pub fn unlist(env: Env, batch_id: u64) -> Result<(), Error> {
+        let mut batch = storage::get_batch(&env, batch_id).ok_or(Error::BatchNotFound)?;
+        batch.issuer.require_auth();
+
+        batch.listed = false;
+        storage::set_batch(&env, &batch);
+
+        events::delisted(&env, &batch.issuer, batch_id);
+        Ok(())
+    }
+
     /// Buys `amount` credits of `batch_id` from the batch issuer/seller.
     ///
     /// Requires authorization from `buyer` and that the batch is currently

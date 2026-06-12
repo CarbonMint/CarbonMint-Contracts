@@ -50,3 +50,11 @@ pub fn listed(env: &Env, issuer: &Address, batch_id: u64, price: i128) {
     let topics = (symbol_short!("listed"), issuer.clone());
     env.events().publish(topics, (batch_id, price));
 }
+
+/// Publishes a `delisted` event when a batch is removed from sale.
+///
+/// Topics: `("delisted", issuer)`; data: `batch_id`.
+pub fn delisted(env: &Env, issuer: &Address, batch_id: u64) {
+    let topics = (symbol_short!("delisted"), issuer.clone());
+    env.events().publish(topics, batch_id);
+}
