@@ -250,3 +250,23 @@ fn test_get_admin_uninitialized_fails() {
     let (_env, client, _admin) = setup();
     client.get_admin();
 }
+
+#[test]
+#[should_panic(expected = "Error(Contract, #2)")]
+fn test_mint_before_init_fails() {
+    let (env, client, _admin) = setup();
+    env.mock_all_auths();
+
+    let issuer = Address::generate(&env);
+    client.mint_batch(&issuer, &project_id(&env), &2024, &100, &1);
+}
+
+#[test]
+fn test_unknown_batch_query_returns_zero_balance() {
+    let (env, client, admin) = setup();
+    client.initialize(&admin);
+
+    let who = Address::generate(&env);
+    assert_eq!(client.balance_of(&who, &42), 0);
+    assert_eq!(client.total_retired(&42), 0);
+}
