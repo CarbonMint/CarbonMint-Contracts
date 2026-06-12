@@ -81,3 +81,19 @@ fn test_mint_batch_increments_ids() {
     assert_eq!(second, 2);
     assert_eq!(client.batch_count(), 2);
 }
+
+#[test]
+fn test_buy_transfers_balances() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    client.buy(&buyer, &id, &300);
+
+    assert_eq!(client.balance_of(&issuer, &id), 700);
+    assert_eq!(client.balance_of(&buyer, &id), 300);
+}
