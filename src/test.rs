@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use soroban_sdk::{
-    testutils::Address as _,
-    Address, Env, String,
+    testutils::{Address as _, AuthorizedFunction},
+    Address, Env, IntoVal, String, Symbol,
 };
 
 use crate::{CarbonMintContract, CarbonMintContractClient};
@@ -178,4 +178,32 @@ fn test_retire_insufficient_balance_fails() {
     let id = client.mint_batch(&issuer, &project_id(&env), &2024, &100, &5);
 
     client.retire(&issuer, &id, &101);
+}
+
+#[test]
+fn test_buy_requires_buyer_auth() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    client.buy(&buyer, &id, &50);
+
+    // The most recent authorization must be the buyer authorizing `buy`.
+    let auths = env.auths();
+    let (addr, invocation) = auths.last().expect("expected an authorization");
+    assert_eq!(addr, &buyer);
+    assert_eq!(
+        invocation.function,
+        AuthorizedFunction::Contract((
+            client.address.clone(),
+            Symbol::new(&env, "buy"),
+            (buyer.clone(), id, 50i128).into_val(&env),
+        ))
+    );
+    // Buyer only authorizes the top-level call, no sub-invocations.
+    assert!(invocation.sub_invocations.is_empty());
 }
