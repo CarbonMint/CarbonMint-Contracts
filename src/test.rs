@@ -245,6 +245,38 @@ fn test_list_updates_price() {
 }
 
 #[test]
+fn test_unlist_marks_batch_not_listed() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+    assert!(client.is_listed(&id));
+
+    client.unlist(&id);
+    assert!(!client.is_listed(&id));
+
+    // Price is preserved across delisting.
+    assert_eq!(client.get_batch(&id).price, 5);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #8)")]
+fn test_buy_unlisted_batch_fails() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    client.unlist(&id);
+    client.buy(&buyer, &id, &10);
+}
+
+#[test]
 #[should_panic(expected = "Error(Contract, #2)")]
 fn test_get_admin_uninitialized_fails() {
     let (_env, client, _admin) = setup();
