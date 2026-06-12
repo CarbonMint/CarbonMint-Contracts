@@ -337,6 +337,38 @@ fn test_unknown_batch_query_returns_zero_balance() {
 }
 
 #[test]
+fn test_set_paused_blocks_minting() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    assert!(!client.is_paused());
+    client.set_paused(&true);
+    assert!(client.is_paused());
+
+    // Unpausing restores minting.
+    client.set_paused(&false);
+    assert!(!client.is_paused());
+
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &100, &1);
+    assert_eq!(id, 1);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #9)")]
+fn test_mint_while_paused_fails() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    client.set_paused(&true);
+
+    let issuer = Address::generate(&env);
+    client.mint_batch(&issuer, &project_id(&env), &2024, &100, &1);
+}
+
+#[test]
 fn test_mint_emits_event() {
     let (env, client, admin) = setup();
     env.mock_all_auths();
