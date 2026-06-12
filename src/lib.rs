@@ -89,4 +89,11 @@ impl CarbonMintContract {
         events::minted(&env, &issuer, id, amount);
         Ok(id)
     }
+
+    /// Returns the batch record for `batch_id`.
+    ///
+    /// Returns [`Error::BatchNotFound`] if no such batch exists.
+    pub fn get_batch(env: Env, batch_id: u64) -> Result<Batch, Error> {
+        storage::get_batch(&env, batch_id).ok_or(Error::BatchNotFound)
+    }
 }
