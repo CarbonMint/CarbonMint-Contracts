@@ -234,4 +234,14 @@ impl CarbonMintContract {
     pub fn retirement_count(env: Env) -> u64 {
         storage::get_retirement_counter(&env)
     }
+
+    /// Returns the still-circulating supply for `batch_id`, i.e. the original
+    /// minted supply minus the amount that has been retired.
+    ///
+    /// Returns [`Error::BatchNotFound`] if no such batch exists.
+    pub fn circulating_supply(env: Env, batch_id: u64) -> Result<i128, Error> {
+        let batch = storage::get_batch(&env, batch_id).ok_or(Error::BatchNotFound)?;
+        let retired = storage::get_total_retired(&env, batch_id);
+        batch.supply.checked_sub(retired).ok_or(Error::Overflow)
+    }
 }
