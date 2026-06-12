@@ -255,52 +255,32 @@ impl CarbonMintContract {
     /// `holder`, recording a retirement certificate and returning its id.
     ///
     /// Requires authorization from `holder`. The holder's balance is reduced
-    /// and the batch's running retired total is increased.
+    /// and the batch's running retired total is increased. The certificate
+    /// names the holder as their own beneficiary.
     pub fn retire(
         env: Env,
         holder: Address,
         batch_id: u64,
         amount: i128,
     ) -> Result<u64, Error> {
-        holder.require_auth();
+        let beneficiary = String::from_str(&env, types::SELF_BENEFICIARY);
+        retire_credits(&env, &holder, batch_id, amount, beneficiary)
+    }
 
-        if amount <= 0 {
-            return Err(Error::InvalidAmount);
-        }
-
-        if !storage::has_batch(&env, batch_id) {
-            return Err(Error::BatchNotFound);
-        }
-
-        let balance = storage::get_balance(&env, &holder, batch_id);
-        if balance < amount {
-            return Err(Error::InsufficientBalance);
-        }
-
-        let new_balance = balance.checked_sub(amount).ok_or(Error::Overflow)?;
-        storage::set_balance(&env, &holder, batch_id, new_balance);
-
-        let retired_total = storage::get_total_retired(&env, batch_id)
-            .checked_add(amount)
-            .ok_or(Error::Overflow)?;
-        storage::set_total_retired(&env, batch_id, retired_total);
-
-        let cert_id = storage::get_retirement_counter(&env)
-            .checked_add(1)
-            .ok_or(Error::Overflow)?;
-        let cert = Retirement {
-            id: cert_id,
-            batch_id,
-            holder: holder.clone(),
-            amount,
-            beneficiary: String::from_str(&env, types::SELF_BENEFICIARY),
-        };
-        storage::set_retirement(&env, &cert);
-        storage::set_retirement_counter(&env, cert_id);
-        storage::extend_instance(&env);
-
-        events::retired(&env, &holder, batch_id, amount, cert_id);
-        Ok(cert_id)
+    /// Retires `amount` credits of `batch_id` on behalf of a named
+    /// `beneficiary`, recording it on the certificate and returning its id.
+    ///
+    /// Behaves exactly like [`retire`](Self::retire) but stores the supplied
+    /// beneficiary string instead of the self sentinel. Requires authorization
+    /// from `holder`.
+    pub fn retire_for(
+        env: Env,
+        holder: Address,
+        batch_id: u64,
+        amount: i128,
+        beneficiary: String,
+    ) -> Result<u64, Error> {
+        retire_credits(&env, &holder, batch_id, amount, beneficiary)
     }
 
     /// Returns the retirement certificate for `cert_id`.
@@ -366,4 +346,57 @@ impl CarbonMintContract {
         let retired = storage::get_total_retired(&env, batch_id);
         batch.supply.checked_sub(retired).ok_or(Error::Overflow)
     }
+}
+
+/// Shared retirement logic used by `retire` and `retire_for`.
+///
+/// Validates the holder's authorization and balance, burns `amount` credits of
+/// `batch_id`, updates the batch's retired total, and writes a certificate with
+/// the supplied `beneficiary`.
+fn retire_credits(
+    env: &Env,
+    holder: &Address,
+    batch_id: u64,
+    amount: i128,
+    beneficiary: String,
+) -> Result<u64, Error> {
+    holder.require_auth();
+
+    if amount <= 0 {
+        return Err(Error::InvalidAmount);
+    }
+
+    if !storage::has_batch(env, batch_id) {
+        return Err(Error::BatchNotFound);
+    }
+
+    let balance = storage::get_balance(env, holder, batch_id);
+    if balance < amount {
+        return Err(Error::InsufficientBalance);
+    }
+
+    let new_balance = balance.checked_sub(amount).ok_or(Error::Overflow)?;
+    storage::set_balance(env, holder, batch_id, new_balance);
+
+    let retired_total = storage::get_total_retired(env, batch_id)
+        .checked_add(amount)
+        .ok_or(Error::Overflow)?;
+    storage::set_total_retired(env, batch_id, retired_total);
+
+    let cert_id = storage::get_retirement_counter(env)
+        .checked_add(1)
+        .ok_or(Error::Overflow)?;
+    let cert = Retirement {
+        id: cert_id,
+        batch_id,
+        holder: holder.clone(),
+        amount,
+        beneficiary,
+    };
+    storage::set_retirement(env, &cert);
+    storage::set_retirement_counter(env, cert_id);
+    storage::extend_instance(env);
+
+    events::retired(env, holder, batch_id, amount, cert_id);
+    Ok(cert_id)
 }
