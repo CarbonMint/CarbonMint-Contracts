@@ -37,3 +37,11 @@ pub fn retired(
     env.events()
         .publish(topics, (batch_id, amount, certificate_id));
 }
+
+/// Publishes a `listed` event when a batch is listed or repriced.
+///
+/// Topics: `("listed", issuer)`; data: `(batch_id, price)`.
+pub fn listed(env: &Env, issuer: &Address, batch_id: u64, price: i128) {
+    let topics = (symbol_short!("listed"), issuer.clone());
+    env.events().publish(topics, (batch_id, price));
+}
