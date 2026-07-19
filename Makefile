@@ -3,8 +3,9 @@ TARGET_DIR    = target/wasm32-unknown-unknown/release
 WASM          = $(TARGET_DIR)/$(CONTRACT_NAME).wasm
 NETWORK      ?= testnet
 SOURCE       ?= default
+CONTRACT_ID  ?=
 
-.PHONY: all build check test fmt fmt-check clippy doc clean deploy optimize wasm-size
+.PHONY: all build check test fmt fmt-check clippy doc clean deploy optimize wasm-size verify-wasm-hash shellcheck test-verify
 
 all: build
 
@@ -43,3 +44,16 @@ deploy: build
 		--wasm $(WASM) \
 		--source $(SOURCE) \
 		--network $(NETWORK)
+
+verify-wasm-hash:
+	./scripts/verify-wasm-hash.sh $(CONTRACT_ID) $(NETWORK)
+
+shellcheck:
+ifeq (, $(shell which shellcheck 2>/dev/null))
+	@echo "shellcheck not found; install it from https://github.com/koalaman/shellcheck"
+else
+	shellcheck scripts/*.sh
+endif
+
+test-verify:
+	./scripts/test-verify-wasm-hash.sh

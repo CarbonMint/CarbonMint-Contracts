@@ -96,6 +96,7 @@ make fmt        # format the source tree
 make clippy     # lint with warnings denied
 make doc        # build the rustdoc API documentation
 make wasm-size  # build and print the compiled wasm size
+make verify-wasm-hash CONTRACT_ID=<ID>  # verify deployed wasm hash
 ```
 
 The compiled WASM is written to
@@ -112,6 +113,27 @@ make optimize
 # deploy to testnet using the `default` identity
 make deploy NETWORK=testnet SOURCE=default
 ```
+
+## Verify deployed WASM hash
+
+After deploying, you can verify that the WASM binary on the ledger matches
+the one you built locally. This confirms the deployed code is exactly what
+is in this repository.
+
+```sh
+# build, hash your local wasm, fetch the deployed hash, and compare
+make verify-wasm-hash CONTRACT_ID=<CONTRACT_ID> NETWORK=testnet
+
+# skip the build step if the wasm hasn't changed
+./scripts/verify-wasm-hash.sh <CONTRACT_ID> testnet --skip-build
+```
+
+The script:
+1. Builds the contract (unless `--skip-build` is passed).
+2. Computes the SHA-256 hash of the local `.wasm` file.
+3. Retrieves the hash of the deployed contract from the ledger.
+4. Prints **Verification passed** if they match or **Verification failed**
+   if they differ.
 
 ## Example flow
 
