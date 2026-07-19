@@ -197,3 +197,27 @@ pub fn set_total_retired(env: &Env, batch_id: u64, amount: i128) {
     env.storage().persistent().set(&key, &amount);
     extend_persistent(env, &key);
 }
+
+/// Monotonic version of the current on-chain storage layout.
+///
+/// Bumped (and persisted via [set_storage_schema_version]) whenever the
+/// [DataKey] layout changes. Defaults to [CURRENT_STORAGE_SCHEMA_VERSION]
+/// for contracts initialized before the field existed.
+pub const CURRENT_STORAGE_SCHEMA_VERSION: u32 = 1;
+
+/// Reads the persisted storage-schema version, defaulting to the current
+/// constant when the field has not been written yet.
+pub fn get_storage_schema_version(env: &Env) -> u32 {
+    env.storage()
+        .instance()
+        .get(&DataKey::StorageSchemaVersion)
+        .unwrap_or(CURRENT_STORAGE_SCHEMA_VERSION)
+}
+
+/// Persists the storage-schema version and keeps its TTL fresh.
+pub fn set_storage_schema_version(env: &Env, version: u32) {
+    env.storage()
+        .instance()
+        .set(&DataKey::StorageSchemaVersion, &version);
+    extend_instance(env);
+}

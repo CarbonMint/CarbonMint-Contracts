@@ -26,6 +26,14 @@ pub use crate::types::{Batch, Listing, Retirement};
 /// retirements and new view getters.
 pub const VERSION: u32 = 2;
 
+/// Version of the on-chain storage layout (the set of [DataKey] variants and
+/// their semantics).
+///
+/// Bumped in lock-step with any storage-layout change so off-chain indexers
+/// can detect schema migrations. Mirrors
+/// [storage::CURRENT_STORAGE_SCHEMA_VERSION].
+pub const STORAGE_SCHEMA_VERSION: u32 = storage::CURRENT_STORAGE_SCHEMA_VERSION;
+
 contractmeta!(key = "name", val = "CarbonMint");
 contractmeta!(
     key = "desc",
@@ -42,6 +50,15 @@ impl CarbonMintContract {
         VERSION
     }
 
+    /// Returns the version of the on-chain storage layout.
+    ///
+    /// Off-chain indexers use this to detect schema migrations: when the set
+    /// of storage keys or their encoding changes, this value is bumped
+    /// alongside the change.
+    pub fn storage_schema_version(env: Env) -> u32 {
+        storage::get_storage_schema_version(&env)
+    }
+
     /// Initializes the registry with an `admin` address.
     ///
     /// The admin governs minting authorization. Calling this more than once
@@ -51,6 +68,7 @@ impl CarbonMintContract {
             return Err(Error::AlreadyInitialized);
         }
         storage::set_admin(&env, &admin);
+        storage::set_storage_schema_version(&env, STORAGE_SCHEMA_VERSION);
         storage::extend_instance(&env);
         Ok(())
     }

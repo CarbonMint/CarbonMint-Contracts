@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use soroban_sdk::{
-    testutils::{Address as _, AuthorizedFunction},
+    testutils::{Address as _, AuthorizedFunction, Events},
     Address, Env, IntoVal, String, Symbol,
 };
 
@@ -10,7 +10,7 @@ use crate::{CarbonMintContract, CarbonMintContractClient};
 /// Registers the contract and returns its client together with the env.
 fn setup<'a>() -> (Env, CarbonMintContractClient<'a>, Address) {
     let env = Env::default();
-    let contract_id = env.register(CarbonMintContract, ());
+    let contract_id = env.register_contract(None, CarbonMintContract);
     let client = CarbonMintContractClient::new(&env, &contract_id);
     let admin = Address::generate(&env);
     (env, client, admin)
@@ -500,4 +500,21 @@ fn test_mint_emits_event() {
     let events = env.events().all();
     assert!(!events.is_empty());
     assert_eq!(id, 1);
+}
+
+#[test]
+fn test_storage_schema_version_exposed() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+    assert_eq!(client.storage_schema_version(), 1);
+}
+
+#[test]
+fn test_storage_schema_version_persisted_on_init() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+    // storage_schema_version is written to instance storage during init.
+    assert_eq!(client.storage_schema_version(), 1);
 }

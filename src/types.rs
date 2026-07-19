@@ -26,6 +26,11 @@ pub enum DataKey {
     Retirement(u64),
     /// Running total of retired credits per batch (persistent storage).
     TotalRetired(u64),
+    /// Monotonic version of the on-chain storage layout (instance storage).
+    ///
+    /// Bumped whenever the set of [`DataKey`] variants or their semantics
+    /// change, so indexers and clients can detect schema migrations.
+    StorageSchemaVersion,
 }
 
 /// A registered batch of carbon credits.
