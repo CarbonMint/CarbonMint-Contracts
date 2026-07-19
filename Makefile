@@ -43,3 +43,6 @@ deploy: build
 		--wasm $(WASM) \
 		--source $(SOURCE) \
 		--network $(NETWORK)
+
+coverage:
+	cargo tarpaulin --config tarpaulin.toml --workspace --timeout 120

@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use soroban_sdk::{
-    testutils::{Address as _, AuthorizedFunction},
+    testutils::{Address as _, AuthorizedFunction, Events},
     Address, Env, IntoVal, String, Symbol,
 };
 
@@ -10,7 +10,7 @@ use crate::{CarbonMintContract, CarbonMintContractClient};
 /// Registers the contract and returns its client together with the env.
 fn setup<'a>() -> (Env, CarbonMintContractClient<'a>, Address) {
     let env = Env::default();
-    let contract_id = env.register(CarbonMintContract, ());
+    let contract_id = env.register_contract(None, CarbonMintContract);
     let client = CarbonMintContractClient::new(&env, &contract_id);
     let admin = Address::generate(&env);
     (env, client, admin)
@@ -500,4 +500,97 @@ fn test_mint_emits_event() {
     let events = env.events().all();
     assert!(!events.is_empty());
     assert_eq!(id, 1);
+}
+
+#[test]
+fn test_set_admin_emits_adminset_event() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+    let new_admin = Address::generate(&env);
+    client.set_admin(&new_admin);
+    let events = env.events().all();
+    assert!(!events.is_empty());
+    assert_eq!(client.get_admin(), new_admin);
+}
+
+#[test]
+fn test_set_paused_emits_paused_event() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+    client.set_paused(&true);
+    let events = env.events().all();
+    assert!(!events.is_empty());
+    assert!(client.is_paused());
+}
+
+#[test]
+fn test_list_emits_listed_event() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+    client.list(&id, &9);
+    let events = env.events().all();
+    assert!(!events.is_empty());
+}
+
+#[test]
+fn test_unlist_emits_delisted_event() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+    client.unlist(&id);
+    let events = env.events().all();
+    assert!(!events.is_empty());
+}
+
+#[test]
+fn test_retire_emits_retired_event() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+    client.retire(&issuer, &id, &100);
+    let events = env.events().all();
+    assert!(!events.is_empty());
+}
+
+#[test]
+fn test_transfer_emits_transfer_event() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+    let issuer = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+    client.transfer(&issuer, &recipient, &id, &250);
+    let events = env.events().all();
+    assert!(!events.is_empty());
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #4)")]
+fn test_mint_batch_negative_price_fails() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+    let issuer = Address::generate(&env);
+    client.mint_batch(&issuer, &project_id(&env), &2024, &100, &-1);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #4)")]
+fn test_list_negative_price_fails() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &100, &5);
+    client.list(&id, &-1);
 }

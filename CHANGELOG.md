@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Coverage reporting: `tarpaulin.toml` config and a `make coverage` target that
+  emits Html/Lcov/Json reports and enforces a coverage threshold (issue #55).
+- Expanded unit coverage for event emission (minted/listed/delisted/transferred/
+  retired/paused/adminset) and negative-amount/negative-price rejection paths.
+- Committed `Cargo.lock` pinning `ed25519-dalek 2.2.0` so the SDK 21.7.x test
+  harness resolves deterministically (the unpinned resolution pulled the
+  incompatible `ed25519-dalek 3.0.0`).
+
 ## [0.2.0]
 
 ### Added
