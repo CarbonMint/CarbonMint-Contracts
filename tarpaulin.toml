@@ -1,0 +1,13 @@
+# Coverage reporting configuration for `cargo tarpaulin`.
+# Run with: cargo tarpaulin --config tarpaulin.toml
+[tool]
+exclude-files = ["/target/", "*/.cargo/*", "tests/*", "benches/*"]
+
+[report]
+formats = ["Html", "Lcov", "Json"]
+output-dir = "target/coverage"
+
+[coverage]
+fail-under = 80.0
+line-coverage = true
+branch-coverage = false

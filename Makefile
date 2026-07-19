@@ -57,3 +57,5 @@ endif
 
 test-verify:
 	./scripts/test-verify-wasm-hash.sh
+coverage:
+	cargo tarpaulin --config tarpaulin.toml --workspace --timeout 120
