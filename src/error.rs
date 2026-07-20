@@ -25,4 +25,6 @@ pub enum Error {
     Paused = 9,
     /// The source and destination of a transfer are the same account.
     SameAccount = 10,
+    /// The batch operation contains zero recipients or exceeds the maximum.
+    TooManyRecipients = 11,
 }

@@ -15,16 +15,16 @@ mod types;
 #[cfg(test)]
 mod test;
 
-use soroban_sdk::{contract, contractimpl, contractmeta, Address, Env, String};
+use soroban_sdk::{contract, contractimpl, contractmeta, Address, Env, String, Vec};
 
 pub use crate::error::Error;
-pub use crate::types::{Batch, Listing, Retirement};
+pub use crate::types::{Batch, Listing, Retirement, TransferItem};
 
 /// Monotonic on-chain version of the contract logic.
 ///
-/// Bumped to `2` alongside the pause control, admin rotation, beneficiary
-/// retirements and new view getters.
-pub const VERSION: u32 = 2;
+/// Bumped to `3` alongside the batch-transfer entrypoint with recipient
+/// count bounding.
+pub const VERSION: u32 = 3;
 
 /// Version of the on-chain storage layout (the set of [DataKey] variants and
 /// their semantics).
@@ -282,6 +282,71 @@ impl CarbonMintContract {
         }
 
         events::transferred(&env, &from, &to, batch_id, amount);
+        Ok(())
+    }
+
+    /// Transfers credits of `batch_id` from `from` to multiple recipients in a
+    /// single atomic invocation.
+    ///
+    /// Unlike [`transfer`](Self::transfer) which handles one destination, this
+    /// accepts a vector of [`TransferItem`] entries, each specifying a
+    /// recipient and an amount. The operation succeeds only when **all** items
+    /// are valid and the sender holds enough credits for the combined total.
+    ///
+    /// Requires authorization from `from`. The number of recipients must be
+    /// between 1 and `types::MAX_RECIPIENTS`; otherwise
+    /// [`Error::TooManyRecipients`] is returned. Individual zero or negative
+    /// amounts, self-transfers, unknown batches, and insufficient aggregate
+    /// balance all produce their usual errors (see
+    /// [`Error::InvalidAmount`], [`Error::SameAccount`],
+    /// [`Error::BatchNotFound`], [`Error::InsufficientBalance`]).
+    pub fn batch_transfer(
+        env: Env,
+        from: Address,
+        batch_id: u64,
+        recipients: Vec<TransferItem>,
+    ) -> Result<(), Error> {
+        from.require_auth();
+
+        let len = recipients.len();
+        if len == 0 || len > types::MAX_RECIPIENTS {
+            return Err(Error::TooManyRecipients);
+        }
+
+        if !storage::has_batch(&env, batch_id) {
+            return Err(Error::BatchNotFound);
+        }
+
+        // Validate each item and compute the total amount requested.
+        let mut total: i128 = 0;
+        for item in recipients.iter() {
+            if item.amount <= 0 {
+                return Err(Error::InvalidAmount);
+            }
+            if item.to == from {
+                return Err(Error::SameAccount);
+            }
+            total = math::checked_add(total, item.amount)?;
+        }
+
+        // Single balance check upfront for atomicity and cost efficiency.
+        let from_balance = storage::get_balance(&env, &from, batch_id);
+        if from_balance < total {
+            return Err(Error::InsufficientBalance);
+        }
+
+        // Deduct the full total from the sender once.
+        let new_from_balance = math::checked_sub(from_balance, total)?;
+        storage::set_balance(&env, &from, batch_id, new_from_balance);
+
+        // Credit each recipient individually.
+        for item in recipients.iter() {
+            let to_balance = storage::get_balance(&env, &item.to, batch_id);
+            let new_to_balance = math::checked_add(to_balance, item.amount)?;
+            storage::set_balance(&env, &item.to, batch_id, new_to_balance);
+        }
+
+        events::batch_transferred(&env, &from, batch_id, len, total);
         Ok(())
     }
 

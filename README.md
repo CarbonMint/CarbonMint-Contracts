@@ -33,6 +33,7 @@ Balances are keyed by `(owner, batch_id)`.
 | `unlist(batch_id)` | Removes a batch from sale (price preserved). Requires issuer auth. |
 | `buy(buyer, batch_id, amount)` | Transfers credits from the seller to the buyer (mock payment). Requires buyer auth and a listed batch. |
 | `transfer(from, to, batch_id, amount)` | Transfers credits directly between holders, bypassing the listing. Requires `from` auth; `from` must differ from `to`. |
+| `batch_transfer(from, batch_id, recipients)` | Transfers credits to up to 50 recipients atomically. Each entry specifies a `to` address and an `amount`. Requires `from` auth. |
 | `retire(holder, batch_id, amount) -> u64` | Burns credits and issues a retirement certificate; returns the certificate id. Requires holder auth. |
 | `retire_for(holder, batch_id, amount, beneficiary) -> u64` | Like `retire`, but records a named beneficiary on the certificate. Requires holder auth. |
 
@@ -68,6 +69,7 @@ Balances are keyed by `(owner, batch_id)`.
 | 8 | `NotListed` | Batch is not currently listed for sale. |
 | 9 | `Paused` | Minting is paused by the admin. |
 | 10 | `SameAccount` | Transfer source and destination are identical. |
+| 11 | `TooManyRecipients` | Batch operation has zero recipients or exceeds the limit. |
 
 ## Events
 
@@ -83,6 +85,7 @@ Off-chain indexers can reconstruct registry state from these events:
 | `retired` | `holder` | `(batch_id, amount, certificate_id)` |
 | `paused` | `admin` | `paused` |
 | `adminset` | `old_admin` | `new_admin` |
+| `batch_transfer` | `from` | `(batch_id, recipient_count, total_amount)` |
 
 ## Build
 

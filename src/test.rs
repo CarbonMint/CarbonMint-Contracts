@@ -2,9 +2,10 @@
 
 use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, Events},
-    Address, Env, IntoVal, String, Symbol,
+    vec, Address, Env, IntoVal, String, Symbol,
 };
 
+use crate::types::TransferItem;
 use crate::{CarbonMintContract, CarbonMintContractClient};
 
 /// Registers the contract and returns its client together with the env.
@@ -517,6 +518,9 @@ fn test_storage_schema_version_persisted_on_init() {
     client.initialize(&admin);
     // storage_schema_version is written to instance storage during init.
     assert_eq!(client.storage_schema_version(), 1);
+}
+
+#[test]
 fn test_set_admin_emits_adminset_event() {
     let (env, client, admin) = setup();
     env.mock_all_auths();
@@ -607,4 +611,255 @@ fn test_list_negative_price_fails() {
     let issuer = Address::generate(&env);
     let id = client.mint_batch(&issuer, &project_id(&env), &2024, &100, &5);
     client.list(&id, &-1);
+}
+
+// ---------------------------------------------------------------------------
+// batch_transfer tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_batch_transfer_to_multiple_recipients() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let alice = Address::generate(&env);
+    let bob = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    let recipients = vec![
+        &env,
+        TransferItem {
+            to: alice.clone(),
+            amount: 300,
+        },
+        TransferItem {
+            to: bob.clone(),
+            amount: 200,
+        },
+    ];
+    client.batch_transfer(&issuer, &id, &recipients);
+
+    assert_eq!(client.balance_of(&issuer, &id), 500);
+    assert_eq!(client.balance_of(&alice, &id), 300);
+    assert_eq!(client.balance_of(&bob, &id), 200);
+
+    // Batch transfer does not affect circulating supply.
+    assert_eq!(client.circulating_supply(&id), 1_000);
+}
+
+#[test]
+fn test_batch_transfer_single_recipient() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    let recipients = vec![
+        &env,
+        TransferItem {
+            to: recipient.clone(),
+            amount: 400,
+        },
+    ];
+    client.batch_transfer(&issuer, &id, &recipients);
+
+    assert_eq!(client.balance_of(&issuer, &id), 600);
+    assert_eq!(client.balance_of(&recipient, &id), 400);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #11)")]
+fn test_batch_transfer_zero_recipients_fails() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    let recipients = vec![&env];
+    client.batch_transfer(&issuer, &id, &recipients);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #4)")]
+fn test_batch_transfer_zero_amount_fails() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let alice = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    let recipients = vec![
+        &env,
+        TransferItem {
+            to: alice.clone(),
+            amount: 0,
+        },
+    ];
+    client.batch_transfer(&issuer, &id, &recipients);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #10)")]
+fn test_batch_transfer_to_self_fails() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let alice = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    let recipients = vec![
+        &env,
+        TransferItem {
+            to: issuer.clone(),
+            amount: 100,
+        },
+        TransferItem {
+            to: alice.clone(),
+            amount: 200,
+        },
+    ];
+    client.batch_transfer(&issuer, &id, &recipients);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #3)")]
+fn test_batch_transfer_unknown_batch_fails() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let alice = Address::generate(&env);
+
+    let recipients = vec![
+        &env,
+        TransferItem {
+            to: alice.clone(),
+            amount: 50,
+        },
+    ];
+    client.batch_transfer(&issuer, &999, &recipients);
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #5)")]
+fn test_batch_transfer_insufficient_aggregate_balance_fails() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let alice = Address::generate(&env);
+    let bob = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &100, &5);
+
+    // Combined total (150) exceeds the issuer's balance (100).
+    let recipients = vec![
+        &env,
+        TransferItem {
+            to: alice.clone(),
+            amount: 80,
+        },
+        TransferItem {
+            to: bob.clone(),
+            amount: 70,
+        },
+    ];
+    client.batch_transfer(&issuer, &id, &recipients);
+}
+
+#[test]
+fn test_batch_transfer_emits_event() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let alice = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    let recipients = vec![
+        &env,
+        TransferItem {
+            to: alice.clone(),
+            amount: 100,
+        },
+    ];
+    client.batch_transfer(&issuer, &id, &recipients);
+
+    let events = env.events().all();
+    assert!(!events.is_empty());
+}
+
+#[test]
+fn test_batch_transfer_requires_from_auth() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let alice = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    let recipients = vec![
+        &env,
+        TransferItem {
+            to: alice.clone(),
+            amount: 50,
+        },
+    ];
+    let recipients_for_auth = vec![
+        &env,
+        TransferItem {
+            to: alice.clone(),
+            amount: 50,
+        },
+    ];
+    client.batch_transfer(&issuer, &id, &recipients);
+
+    let auths = env.auths();
+    let (addr, invocation) = auths.last().expect("expected an authorization");
+    assert_eq!(addr, &issuer);
+    assert_eq!(
+        invocation.function,
+        AuthorizedFunction::Contract((
+            client.address.clone(),
+            Symbol::new(&env, "batch_transfer"),
+            (issuer.clone(), id, recipients_for_auth).into_val(&env),
+        ))
+    );
+    assert!(invocation.sub_invocations.is_empty());
+}
+
+#[test]
+#[should_panic(expected = "Error(Contract, #11)")]
+fn test_batch_transfer_exceeds_max_recipients_fails() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &10_000, &5);
+
+    // Build 51 recipients (MAX_RECIPIENTS is 50).
+    let mut recipients = vec![&env];
+    for _ in 0..51 {
+        let to = Address::generate(&env);
+        recipients.push_back(TransferItem {
+            to,
+            amount: 1,
+        });
+    }
+    client.batch_transfer(&issuer, &id, &recipients);
 }

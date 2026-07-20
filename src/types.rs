@@ -4,6 +4,13 @@ use soroban_sdk::{contracttype, Address, String};
 /// beneficiary (i.e. the holder retires on their own behalf).
 pub const SELF_BENEFICIARY: &str = "self";
 
+/// Maximum number of distinct recipients allowed in a single batch-transfer
+/// operation.
+///
+/// The bound protects against excessive per-transaction storage writes and
+/// keeps instruction budgets predictable for Soroban validators.
+pub const MAX_RECIPIENTS: u32 = 50;
+
 /// Keys used to address values in contract storage.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -92,4 +99,17 @@ pub struct Retirement {
     ///
     /// Defaults to [`SELF_BENEFICIARY`] when the holder retires for themselves.
     pub beneficiary: String,
+}
+
+/// A single recipient–amount pair used in batch-transfer operations.
+///
+/// Bundles a destination address together with the number of credits to
+/// deliver so callers can express multi-recipient transfers atomically.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TransferItem {
+    /// The account that will receive the credits.
+    pub to: Address,
+    /// Number of credits to transfer to `to`.
+    pub amount: i128,
 }

@@ -7,6 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- `batch_transfer` entrypoint: transfers credits to up to 50 recipients in a
+  single atomic invocation, bounded by `MAX_RECIPIENTS` (issue #77).
+- `TransferItem` struct and `TooManyRecipients` error (code 11).
+- `batch_xfr` event emitted on successful batch transfers.
+- Documentation for batch-transfer resource limits and known limitations.
 - Storage schema versioning: `storage_schema_version()` view and a persisted
   `StorageSchemaVersion` instance key, written on `initialize`, so indexers can
   detect storage-layout migrations (issue #48).

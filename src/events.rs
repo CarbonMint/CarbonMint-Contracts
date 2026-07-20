@@ -2,7 +2,7 @@
 //!
 //! Each marketplace action emits a structured event so off-chain indexers can
 //! reconstruct registry state: `minted`, `listed`, `delisted`, `bought`,
-//! `transfer`, `retired`, and `paused`.
+//! `transfer`, `retired`, `paused`, `adminset`, and `batch_transfer`.
 
 use soroban_sdk::{symbol_short, Address, Env};
 
@@ -68,6 +68,23 @@ pub fn transferred(env: &Env, from: &Address, to: &Address, batch_id: u64, amoun
 pub fn paused(env: &Env, admin: &Address, paused: bool) {
     let topics = (symbol_short!("paused"), admin.clone());
     env.events().publish(topics, paused);
+}
+
+/// Publishes a `batch_transfer` event when credits are transferred to
+/// multiple recipients in a single invocation.
+///
+/// Topics: `("batch_transfer", from)`; data: `(batch_id, recipient_count,
+/// total_amount)`.
+pub fn batch_transferred(
+    env: &Env,
+    from: &Address,
+    batch_id: u64,
+    recipient_count: u32,
+    total_amount: i128,
+) {
+    let topics = (symbol_short!("batch_xfr"), from.clone());
+    env.events()
+        .publish(topics, (batch_id, recipient_count, total_amount));
 }
 
 /// Publishes an `adminset` event when the registry admin is rotated.
