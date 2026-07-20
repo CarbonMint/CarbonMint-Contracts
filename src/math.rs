@@ -168,23 +168,24 @@ pub fn saturating_add_u64(a: u64, b: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{assert_err, assert_ok};
 
     // -----------------------------------------------------------------------
     // checked_add
     // -----------------------------------------------------------------------
     #[test]
     fn test_checked_add_ok() {
-        assert_eq!(checked_add(10i128, 20i128).unwrap(), 30);
-        assert_eq!(checked_add(0i128, 0i128).unwrap(), 0);
-        assert_eq!(checked_add(-5i128, 3i128).unwrap(), -2);
-        assert_eq!(checked_add(i128::MAX - 1, 1).unwrap(), i128::MAX);
-        assert_eq!(checked_add(i128::MIN, 1).unwrap(), i128::MIN + 1);
+        assert_eq!(assert_ok!(checked_add(10i128, 20i128)), 30);
+        assert_eq!(assert_ok!(checked_add(0i128, 0i128)), 0);
+        assert_eq!(assert_ok!(checked_add(-5i128, 3i128)), -2);
+        assert_eq!(assert_ok!(checked_add(i128::MAX - 1, 1)), i128::MAX);
+        assert_eq!(assert_ok!(checked_add(i128::MIN, 1)), i128::MIN + 1);
     }
 
     #[test]
     fn test_checked_add_overflow() {
-        assert_eq!(checked_add(i128::MAX, 1), Err(Error::Overflow));
-        assert_eq!(checked_add(i128::MIN, -1), Err(Error::Overflow));
+        assert_err!(checked_add(i128::MAX, 1), Error::Overflow);
+        assert_err!(checked_add(i128::MIN, -1), Error::Overflow);
     }
 
     // -----------------------------------------------------------------------
@@ -192,17 +193,18 @@ mod tests {
     // -----------------------------------------------------------------------
     #[test]
     fn test_checked_sub_ok() {
-        assert_eq!(checked_sub(30i128, 10i128).unwrap(), 20);
-        assert_eq!(checked_sub(0i128, 0i128).unwrap(), 0);
-        assert_eq!(checked_sub(-5i128, -10i128).unwrap(), 5);
-        assert_eq!(checked_sub(i128::MIN + 1, 1).unwrap(), i128::MIN);
+        assert_eq!(assert_ok!(checked_sub(30i128, 10i128)), 20);
+        assert_eq!(assert_ok!(checked_sub(0i128, 0i128)), 0);
+        assert_eq!(assert_ok!(checked_sub(-5i128, -10i128)), 5);
+        assert_eq!(assert_ok!(checked_sub(i128::MIN + 1, 1)), i128::MIN);
     }
 
     #[test]
     fn test_checked_sub_underflow() {
-        assert_eq!(checked_sub(0i128, 1), Err(Error::Overflow));
-        assert_eq!(checked_sub(i128::MIN, 1), Err(Error::Overflow));
-        assert_eq!(checked_sub(-100i128, i128::MAX), Err(Error::Overflow));
+        // i128::MIN - 1 wraps to i128::MAX, so checked_sub must reject it.
+        assert_err!(checked_sub(i128::MIN, 1), Error::Overflow);
+        // -100 - i128::MAX underflows the i128 range.
+        assert_err!(checked_sub(-100i128, i128::MAX), Error::Overflow);
     }
 
     // -----------------------------------------------------------------------
@@ -210,16 +212,16 @@ mod tests {
     // -----------------------------------------------------------------------
     #[test]
     fn test_checked_mul_ok() {
-        assert_eq!(checked_mul(10i128, 3i128).unwrap(), 30);
-        assert_eq!(checked_mul(-5i128, 3i128).unwrap(), -15);
-        assert_eq!(checked_mul(0i128, 100i128).unwrap(), 0);
-        assert_eq!(checked_mul(1i128, 1i128).unwrap(), 1);
+        assert_eq!(assert_ok!(checked_mul(10i128, 3i128)), 30);
+        assert_eq!(assert_ok!(checked_mul(-5i128, 3i128)), -15);
+        assert_eq!(assert_ok!(checked_mul(0i128, 100i128)), 0);
+        assert_eq!(assert_ok!(checked_mul(1i128, 1i128)), 1);
     }
 
     #[test]
     fn test_checked_mul_overflow() {
-        assert_eq!(checked_mul(i128::MAX, 2), Err(Error::Overflow));
-        assert_eq!(checked_mul(i128::MIN, 2), Err(Error::Overflow));
+        assert_err!(checked_mul(i128::MAX, 2), Error::Overflow);
+        assert_err!(checked_mul(i128::MIN, 2), Error::Overflow);
     }
 
     // -----------------------------------------------------------------------
@@ -227,20 +229,20 @@ mod tests {
     // -----------------------------------------------------------------------
     #[test]
     fn test_checked_div_ok() {
-        assert_eq!(checked_div(30i128, 3i128).unwrap(), 10);
-        assert_eq!(checked_div(-30i128, 3i128).unwrap(), -10);
-        assert_eq!(checked_div(0i128, 100i128).unwrap(), 0);
+        assert_eq!(assert_ok!(checked_div(30i128, 3i128)), 10);
+        assert_eq!(assert_ok!(checked_div(-30i128, 3i128)), -10);
+        assert_eq!(assert_ok!(checked_div(0i128, 100i128)), 0);
     }
 
     #[test]
     fn test_checked_div_by_zero() {
-        assert_eq!(checked_div(1i128, 0), Err(Error::Overflow));
+        assert_err!(checked_div(1i128, 0), Error::Overflow);
     }
 
     #[test]
     fn test_checked_div_overflow() {
         // i128::MIN / -1 overflows because there is no positive 2^127.
-        assert_eq!(checked_div(i128::MIN, -1), Err(Error::Overflow));
+        assert_err!(checked_div(i128::MIN, -1), Error::Overflow);
     }
 
     // -----------------------------------------------------------------------
@@ -286,14 +288,14 @@ mod tests {
     // -----------------------------------------------------------------------
     #[test]
     fn test_checked_add_u64_ok() {
-        assert_eq!(checked_add_u64(5u64, 3u64).unwrap(), 8);
-        assert_eq!(checked_add_u64(0u64, 0u64).unwrap(), 0);
-        assert_eq!(checked_add_u64(u64::MAX - 1, 1).unwrap(), u64::MAX);
+        assert_eq!(assert_ok!(checked_add_u64(5u64, 3u64)), 8);
+        assert_eq!(assert_ok!(checked_add_u64(0u64, 0u64)), 0);
+        assert_eq!(assert_ok!(checked_add_u64(u64::MAX - 1, 1)), u64::MAX);
     }
 
     #[test]
     fn test_checked_add_u64_overflow() {
-        assert_eq!(checked_add_u64(u64::MAX, 1), Err(Error::Overflow));
+        assert_err!(checked_add_u64(u64::MAX, 1), Error::Overflow);
     }
 
     // -----------------------------------------------------------------------

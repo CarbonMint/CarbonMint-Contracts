@@ -18,6 +18,7 @@ mod bench_support;
 #[cfg(test)]
 mod fuzz_harness;
 
+mod debug_assertions;
 #[cfg(test)]
 mod test;
 

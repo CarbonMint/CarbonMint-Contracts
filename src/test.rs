@@ -1,5 +1,3 @@
-#![cfg(test)]
-
 use soroban_sdk::{
     testutils::{Address as _, AuthorizedFunction, Events},
     vec, Address, Env, IntoVal, String, Symbol,

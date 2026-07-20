@@ -52,6 +52,47 @@ cargo fuzz run fuzz_target_1
 ```
 
 The scaffold currently exercises the happy path for initialization, minting and buying with byte-driven payloads.
+## Debug-assertion helpers
+
+The crate ships compile-time-gated debug-assertion macros that provide richer
+diagnostic output than the standard Rust macros when a test assertion fails.
+They live in `src/debug_assertions.rs` and are available **only** in test
+builds (they are stripped from the release WASM).
+
+| Macro         | Purpose                                                |
+|---------------|--------------------------------------------------------|
+| `assert_ok!`  | Assert a `Result` is `Ok`, printing the error on panic |
+| `assert_err!` | Assert a `Result` is a specific `Err` variant          |
+
+### `assert_ok!`
+
+```rust
+use carbonmint_contract::assert_ok;
+use carbonmint_contract::math;
+
+let val = assert_ok!(math::checked_add(10, 20));
+assert_eq!(val, 30);
+```
+
+On failure the macro includes the file, line, column, original expression
+and the debug representation of the actual error.
+
+### `assert_err!`
+
+```rust
+use carbonmint_contract::{assert_err, Error};
+
+let res: Result<i128, Error> = Err(Error::Overflow);
+assert_err!(res, Error::Overflow);
+```
+
+The expected error is specified as a pattern, so any `enum` variant works.
+If the result is `Ok` or a *different* error, the macro panics with a
+message showing both the expected pattern and the actual value.
+
+These helpers are used throughout the math module tests (`src/math.rs`) to
+make overflow and underflow assertions more readable and to improve failure
+diagnostics when a checked arithmetic test breaks.
 
 ## What the suite covers
 
