@@ -13,6 +13,8 @@ mod storage;
 mod types;
 
 #[cfg(test)]
+mod debug_assertions;
+#[cfg(test)]
 mod test;
 
 use soroban_sdk::{contract, contractimpl, contractmeta, Address, Env, String};
