@@ -637,6 +637,17 @@ fn test_list_negative_price_fails() {
 
 #[test]
 fn test_batch_transfer_to_multiple_recipients() {
+// Maximum-value arithmetic paths (contract-level)
+// ---------------------------------------------------------------------------
+// These tests drive the contract through the largest legal i128 amounts to
+// verify that the checked-arithmetic helpers in `math` do not overflow at the
+// boundaries, and that the contract correctly propagates `Error::Overflow`
+// when the boundary is actually exceeded.
+
+/// Minting a single batch whose supply equals `i128::MAX` must succeed: every
+/// intermediate `checked_add` and `checked_mul` call must resolve to `Ok`.
+#[test]
+fn test_mint_batch_max_i128_supply_succeeds() {
     let (env, client, admin) = setup();
     env.mock_all_auths();
     client.initialize(&admin);
@@ -669,6 +680,58 @@ fn test_batch_transfer_to_multiple_recipients() {
 
 #[test]
 fn test_batch_transfer_single_recipient() {
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &i128::MAX, &1);
+    assert_eq!(id, 1);
+
+    let batch = client.get_batch(&id);
+    assert_eq!(batch.supply, i128::MAX);
+    assert_eq!(client.balance_of(&issuer, &id), i128::MAX);
+    assert_eq!(client.total_minted(), i128::MAX);
+}
+
+/// Minting a second batch after the total_minted counter has already reached
+/// `i128::MAX` must return `Error::Overflow` (contract error code 7), because
+/// `checked_add(i128::MAX, any_positive)` would overflow.
+#[test]
+#[should_panic(expected = "Error(Contract, #7)")]
+fn test_second_mint_overflows_total_minted() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    // Saturate total_minted at i128::MAX.
+    client.mint_batch(&issuer, &project_id(&env), &2024, &i128::MAX, &1);
+    // Any further positive mint must overflow the cumulative counter.
+    client.mint_batch(&issuer, &project_id(&env), &2025, &1, &1);
+}
+
+/// A buyer purchasing the entire issuer supply in one call (full-supply buy)
+/// exercises `move_balance` through `checked_sub(i128::MAX, i128::MAX)` and
+/// `checked_add(0, i128::MAX)` — both of which must succeed.
+#[test]
+fn test_buy_entire_max_supply_succeeds() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &i128::MAX, &1);
+
+    client.buy(&buyer, &id, &i128::MAX);
+
+    assert_eq!(client.balance_of(&issuer, &id), 0);
+    assert_eq!(client.balance_of(&buyer, &id), i128::MAX);
+    // Circulating supply is unchanged by trading.
+    assert_eq!(client.circulating_supply(&id), i128::MAX);
+}
+
+/// Transferring the full `i128::MAX` balance in a single call exercises the
+/// same `move_balance` arithmetic path as the buy test, but through the
+/// `transfer` entrypoint.
+#[test]
+fn test_transfer_entire_max_supply_succeeds() {
     let (env, client, admin) = setup();
     env.mock_all_auths();
     client.initialize(&admin);
@@ -693,6 +756,22 @@ fn test_batch_transfer_single_recipient() {
 #[test]
 #[should_panic(expected = "Error(Contract, #11)")]
 fn test_batch_transfer_zero_recipients_fails() {
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &i128::MAX, &1);
+
+    client.transfer(&issuer, &recipient, &id, &i128::MAX);
+
+    assert_eq!(client.balance_of(&issuer, &id), 0);
+    assert_eq!(client.balance_of(&recipient, &id), i128::MAX);
+    // Transfer does not affect circulating supply.
+    assert_eq!(client.circulating_supply(&id), i128::MAX);
+}
+
+/// Retiring the entire `i128::MAX` supply in a single call exercises
+/// `checked_sub(i128::MAX, i128::MAX)` (new balance → 0),
+/// `checked_add(0, i128::MAX)` (total_retired counter), and
+/// `checked_sub(i128::MAX, i128::MAX)` again inside `circulating_supply`.
+#[test]
+fn test_retire_entire_max_supply_succeeds() {
     let (env, client, admin) = setup();
     env.mock_all_auths();
     client.initialize(&admin);
@@ -773,6 +852,22 @@ fn test_batch_transfer_unknown_batch_fails() {
 #[test]
 #[should_panic(expected = "Error(Contract, #5)")]
 fn test_batch_transfer_insufficient_aggregate_balance_fails() {
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &i128::MAX, &1);
+
+    let cert_id = client.retire(&issuer, &id, &i128::MAX);
+    assert_eq!(cert_id, 1);
+
+    assert_eq!(client.balance_of(&issuer, &id), 0);
+    assert_eq!(client.total_retired(&id), i128::MAX);
+    assert_eq!(client.circulating_supply(&id), 0);
+}
+
+/// After retiring the full supply the issuer's balance is 0; any further
+/// retire attempt must fail with `Error::InsufficientBalance` (#5), not panic
+/// with an overflow.
+#[test]
+#[should_panic(expected = "Error(Contract, #5)")]
+fn test_retire_after_full_retirement_fails_with_insufficient_balance() {
     let (env, client, admin) = setup();
     env.mock_all_auths();
     client.initialize(&admin);
@@ -880,4 +975,8 @@ fn test_batch_transfer_exceeds_max_recipients_fails() {
         });
     }
     client.batch_transfer(&issuer, &id, &recipients);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &i128::MAX, &1);
+    client.retire(&issuer, &id, &i128::MAX);
+    // Balance is now 0; even 1 more should trigger InsufficientBalance.
+    client.retire(&issuer, &id, &1);
 }

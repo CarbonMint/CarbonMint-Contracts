@@ -50,6 +50,16 @@ cover:
 - Overflow / underflow / division‑by‑zero error paths
 - Clamp behaviour for saturating variants
 - Edge cases (`i128::MIN / -1`, `i128::MAX + 1`, `u64::MAX + 1`, etc.)
+- **Maximum-value arithmetic paths**: identity operations, zero-products, and
+  near-boundary success cases at `i128::MAX`, `i128::MIN`, and `u64::MAX`
+  (e.g. `checked_add(i128::MAX, 0)`, `checked_mul(i128::MAX, 1)`,
+  `checked_div(i128::MAX, i128::MAX)`, `saturating_sub(i128::MIN, i128::MAX)`,
+  `saturating_add_u64(u64::MAX, u64::MAX)`)
+
+The contract-level integration tests in `src/test.rs` also exercise these
+paths end-to-end through mint, transfer, buy, and retire operations using
+`i128::MAX` amounts, verifying that `Error::Overflow` is returned (not a
+panic) when the ceiling is legitimately exceeded.
 
 Run them with:
 

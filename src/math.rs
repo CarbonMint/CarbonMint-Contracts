@@ -312,4 +312,134 @@ mod tests {
         assert_eq!(saturating_add_u64(u64::MAX, 1), u64::MAX);
         assert_eq!(saturating_add_u64(u64::MAX, 100), u64::MAX);
     }
+
+    // -----------------------------------------------------------------------
+    // Maximum-value arithmetic paths
+    //
+    // These cases exercise every helper at the numeric ceiling of its type
+    // to confirm that identity operations, near-boundary subtractions, and
+    // zero-multiplications all return Ok rather than Err(Overflow).
+    // -----------------------------------------------------------------------
+
+    /// checked_add: adding 0 to i128::MAX must return Ok(i128::MAX).
+    #[test]
+    fn test_checked_add_max_plus_zero() {
+        assert_eq!(checked_add(i128::MAX, 0).unwrap(), i128::MAX);
+    }
+
+    /// checked_add: adding i128::MAX - 1 to 1 must return Ok(i128::MAX).
+    #[test]
+    fn test_checked_add_reaches_max() {
+        assert_eq!(checked_add(i128::MAX - 1, 1).unwrap(), i128::MAX);
+    }
+
+    /// checked_sub: i128::MAX - i128::MAX must return Ok(0).
+    #[test]
+    fn test_checked_sub_max_minus_max() {
+        assert_eq!(checked_sub(i128::MAX, i128::MAX).unwrap(), 0);
+    }
+
+    /// checked_sub: subtracting 0 from i128::MAX must return Ok(i128::MAX).
+    #[test]
+    fn test_checked_sub_max_minus_zero() {
+        assert_eq!(checked_sub(i128::MAX, 0).unwrap(), i128::MAX);
+    }
+
+    /// checked_sub: i128::MIN - 0 must return Ok(i128::MIN).
+    #[test]
+    fn test_checked_sub_min_minus_zero() {
+        assert_eq!(checked_sub(i128::MIN, 0).unwrap(), i128::MIN);
+    }
+
+    /// checked_mul: i128::MAX × 1 is the identity and must return Ok(i128::MAX).
+    #[test]
+    fn test_checked_mul_max_by_one() {
+        assert_eq!(checked_mul(i128::MAX, 1).unwrap(), i128::MAX);
+    }
+
+    /// checked_mul: i128::MAX × 0 must return Ok(0) (zero-product).
+    #[test]
+    fn test_checked_mul_max_by_zero() {
+        assert_eq!(checked_mul(i128::MAX, 0).unwrap(), 0);
+    }
+
+    /// checked_mul: i128::MIN × 1 must return Ok(i128::MIN).
+    #[test]
+    fn test_checked_mul_min_by_one() {
+        assert_eq!(checked_mul(i128::MIN, 1).unwrap(), i128::MIN);
+    }
+
+    /// checked_mul: i128::MIN × 0 must return Ok(0).
+    #[test]
+    fn test_checked_mul_min_by_zero() {
+        assert_eq!(checked_mul(i128::MIN, 0).unwrap(), 0);
+    }
+
+    /// checked_div: i128::MAX / 1 must return Ok(i128::MAX) (identity divisor).
+    #[test]
+    fn test_checked_div_max_by_one() {
+        assert_eq!(checked_div(i128::MAX, 1).unwrap(), i128::MAX);
+    }
+
+    /// checked_div: i128::MAX / i128::MAX must return Ok(1).
+    #[test]
+    fn test_checked_div_max_by_max() {
+        assert_eq!(checked_div(i128::MAX, i128::MAX).unwrap(), 1);
+    }
+
+    /// checked_div: i128::MAX / -1 must return Ok(-i128::MAX) (no overflow;
+    /// only i128::MIN / -1 overflows because -i128::MIN is not representable).
+    #[test]
+    fn test_checked_div_max_by_neg_one() {
+        assert_eq!(checked_div(i128::MAX, -1).unwrap(), -i128::MAX);
+    }
+
+    /// checked_div: 0 / i128::MAX must return Ok(0).
+    #[test]
+    fn test_checked_div_zero_by_max() {
+        assert_eq!(checked_div(0, i128::MAX).unwrap(), 0);
+    }
+
+    /// saturating_add (i128): MAX + 0 must return MAX (not clamp unnecessarily).
+    #[test]
+    fn test_saturating_add_max_plus_zero() {
+        assert_eq!(saturating_add(i128::MAX, 0), i128::MAX);
+    }
+
+    /// saturating_sub (i128): MIN - 0 must return MIN.
+    #[test]
+    fn test_saturating_sub_min_minus_zero() {
+        assert_eq!(saturating_sub(i128::MIN, 0), i128::MIN);
+    }
+
+    /// saturating_sub (i128): MAX - MAX must return 0.
+    #[test]
+    fn test_saturating_sub_max_minus_max() {
+        assert_eq!(saturating_sub(i128::MAX, i128::MAX), 0);
+    }
+
+    /// saturating_sub (i128): saturating below MIN must clamp to MIN.
+    #[test]
+    fn test_saturating_sub_clamp_to_min() {
+        assert_eq!(saturating_sub(i128::MIN, 1), i128::MIN);
+        assert_eq!(saturating_sub(i128::MIN, i128::MAX), i128::MIN);
+    }
+
+    /// checked_add_u64: u64::MAX + 0 must return Ok(u64::MAX).
+    #[test]
+    fn test_checked_add_u64_max_plus_zero() {
+        assert_eq!(checked_add_u64(u64::MAX, 0).unwrap(), u64::MAX);
+    }
+
+    /// saturating_add_u64: u64::MAX + 0 must return u64::MAX (no clamp needed).
+    #[test]
+    fn test_saturating_add_u64_max_plus_zero() {
+        assert_eq!(saturating_add_u64(u64::MAX, 0), u64::MAX);
+    }
+
+    /// saturating_add_u64: any overflow must clamp to u64::MAX, not wrap.
+    #[test]
+    fn test_saturating_add_u64_overflow_clamps() {
+        assert_eq!(saturating_add_u64(u64::MAX, u64::MAX), u64::MAX);
+    }
 }
