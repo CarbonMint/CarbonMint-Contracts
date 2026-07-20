@@ -6,4 +6,5 @@ carbonmint-contract is a Soroban smart contract on the Stellar network. This pag
 project's reference documentation and describes the property-tests in detail, covering the relevant
 entrypoints, storage layout, and invariants where applicable.
 
-See the README and the sources under src/ for the authoritative implementation.
+A lightweight fuzzing scaffold now lives under `fuzz/` as a starting point for property-style exploration.
+See the README, the sources under `src/`, and the harness under `fuzz/` for the authoritative implementation.
