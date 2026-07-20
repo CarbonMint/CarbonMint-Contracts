@@ -330,6 +330,31 @@ impl CarbonMintContract {
     }
 
     /// Returns the number of retirement certificates issued so far.
+    /// Execute a batch of operations atomically.
+    /// If any operation fails, the entire batch is rolled back.
+    pub fn batch_operations(env: Env, ops: Vec<BatchOp>) -> Result<(), Error> {
+        for op in ops.iter() {
+            match op {
+                BatchOp::Buy { buyer, batch_id, amount } => {
+                    Self::buy(env.clone(), buyer, batch_id, amount)?;
+                }
+                BatchOp::Retire { holder, batch_id, amount } => {
+                    Self::retire(env.clone(), holder, batch_id, amount)?;
+                }
+                BatchOp::Transfer { from, to, batch_id, amount } => {
+                    Self::transfer(env.clone(), from, to, batch_id, amount)?;
+                }
+                BatchOp::List { batch_id, price } => {
+                    Self::list(env.clone(), batch_id, price)?;
+                }
+                BatchOp::Unlist { batch_id } => {
+                    Self::unlist(env.clone(), batch_id)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn retirement_count(env: Env) -> u64 {
         storage::get_retirement_counter(&env)
     }
