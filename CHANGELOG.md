@@ -12,6 +12,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `TransferItem` struct and `TooManyRecipients` error (code 11).
 - `batch_xfr` event emitted on successful batch transfers.
 - Documentation for batch-transfer resource limits and known limitations.
+- Automated testnet deployment smoke script (`scripts/smoke-test-testnet.sh`) 
+  with standalone mock tests.
 - Storage schema versioning: `storage_schema_version()` view and a persisted
   `StorageSchemaVersion` instance key, written on `initialize`, so indexers can
   detect storage-layout migrations (issue #48).
