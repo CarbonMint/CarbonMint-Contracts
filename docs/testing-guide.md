@@ -39,6 +39,20 @@ cargo tarpaulin --config tarpaulin.toml --workspace --timeout 120
 The `Html` report (`target/coverage/tarpaulin-report.html`) is the human-readable
 view; `Lcov` (`target/coverage/lcov.info`) and `Json` feed CI dashboards.
 
+## Fuzzing scaffold
+
+A basic `cargo-fuzz` scaffold is available under `fuzz/` for exploratory input-driven testing. The target is intentionally small and uses the same in-process Soroban environment as the unit tests so it can be expanded without introducing a separate harness.
+
+To bootstrap it in a Rust-enabled environment, run:
+
+```sh
+cargo install cargo-fuzz
+cargo fuzz init
+cargo fuzz run fuzz_target_1
+```
+
+The scaffold currently exercises the happy path for initialization, minting and buying with byte-driven payloads.
+
 ## What the suite covers
 
 The unit suite (`src/test.rs`) exercises:
