@@ -517,6 +517,9 @@ fn test_storage_schema_version_persisted_on_init() {
     client.initialize(&admin);
     // storage_schema_version is written to instance storage during init.
     assert_eq!(client.storage_schema_version(), 1);
+}
+
+#[test]
 fn test_set_admin_emits_adminset_event() {
     let (env, client, admin) = setup();
     env.mock_all_auths();
@@ -607,4 +610,53 @@ fn test_list_negative_price_fails() {
     let issuer = Address::generate(&env);
     let id = client.mint_batch(&issuer, &project_id(&env), &2024, &100, &5);
     client.list(&id, &-1);
+}
+
+// ---------------------------------------------------------------------------
+// Deployment-funding invariants
+//
+// These tests verify properties that operators depend on when scripting a
+// funded deployment: the version constant is stable, the storage schema
+// version survives a full initialize-and-read cycle, and the contract
+// correctly guards against a double-initialization that would waste the
+// caller's transaction fees.
+// ---------------------------------------------------------------------------
+
+/// `version()` must return the value of the `VERSION` constant defined in
+/// `lib.rs` (currently 2).  Operators script funded deployments against this
+/// number; an unexpected change would indicate an unintended build.
+#[test]
+fn test_version_returns_current_version() {
+    let (_env, client, admin) = setup();
+    client.initialize(&admin);
+    // VERSION = 2 as defined in src/lib.rs.
+    assert_eq!(client.version(), 2);
+}
+
+/// `storage_schema_version()` must equal 1 immediately after `initialize` and
+/// remain 1 on subsequent reads without any state-changing call in between.
+/// Off-chain indexers and deployment scripts use this value to detect
+/// migrations; it must not change unless the storage layout changes.
+#[test]
+fn test_storage_schema_version_is_stable() {
+    let (_env, client, admin) = setup();
+    client.initialize(&admin);
+    // First read: written by initialize.
+    assert_eq!(client.storage_schema_version(), 1);
+    // Second read: must be identical (no state change occurred).
+    assert_eq!(client.storage_schema_version(), 1);
+}
+
+/// Calling `initialize` a second time on an already-funded and deployed
+/// contract must return `Error::AlreadyInitialized` (#1), not silently
+/// overwrite the admin.  This protects operators from wasting XLM on a
+/// redundant transaction that would also corrupt the admin key.
+#[test]
+#[should_panic(expected = "Error(Contract, #1)")]
+fn test_double_initialize_is_rejected() {
+    let (env, client, admin) = setup();
+    client.initialize(&admin);
+    // A second call with a different admin must be rejected.
+    let rogue = Address::generate(&env);
+    client.initialize(&rogue);
 }

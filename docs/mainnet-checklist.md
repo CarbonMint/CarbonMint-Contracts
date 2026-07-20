@@ -8,6 +8,20 @@ entrypoints, storage layout, and invariants where applicable.
 
 See the README and the sources under src/ for the authoritative implementation.
 
+## Funding
+
+See [`deployment-funding.md`](deployment-funding.md) for the complete
+breakdown. Before proceeding, confirm:
+
+- [ ] Deployer account exists on mainnet and holds **≥ 5 XLM** available
+      balance (covers base reserves for the WASM upload + contract instance
+      entries, plus a buffer for transaction resource fees).
+- [ ] Simulate the `initialize` call with
+      `stellar contract simulate` and verify the reported resource fee is
+      within the available balance.
+- [ ] A funded operator account separate from the admin key is available for
+      day-to-day contract invocations.
+
 ## Pre-deployment
 
 - [ ] Run `make test` – all tests pass.
