@@ -174,11 +174,11 @@ mod tests {
     // -----------------------------------------------------------------------
     #[test]
     fn test_checked_add_ok() {
-        assert_eq!(checked_add(10i128, 20i128).unwrap(), 30);
-        assert_eq!(checked_add(0i128, 0i128).unwrap(), 0);
-        assert_eq!(checked_add(-5i128, 3i128).unwrap(), -2);
-        assert_eq!(checked_add(i128::MAX - 1, 1).unwrap(), i128::MAX);
-        assert_eq!(checked_add(i128::MIN, 1).unwrap(), i128::MIN + 1);
+        assert_eq!(checked_add(10i128, 20i128), Ok(30));
+        assert_eq!(checked_add(0i128, 0i128), Ok(0));
+        assert_eq!(checked_add(-5i128, 3i128), Ok(-2));
+        assert_eq!(checked_add(i128::MAX - 1, 1), Ok(i128::MAX));
+        assert_eq!(checked_add(i128::MIN, 1), Ok(i128::MIN + 1));
     }
 
     #[test]
@@ -192,10 +192,10 @@ mod tests {
     // -----------------------------------------------------------------------
     #[test]
     fn test_checked_sub_ok() {
-        assert_eq!(checked_sub(30i128, 10i128).unwrap(), 20);
-        assert_eq!(checked_sub(0i128, 0i128).unwrap(), 0);
-        assert_eq!(checked_sub(-5i128, -10i128).unwrap(), 5);
-        assert_eq!(checked_sub(i128::MIN + 1, 1).unwrap(), i128::MIN);
+        assert_eq!(checked_sub(30i128, 10i128), Ok(20));
+        assert_eq!(checked_sub(0i128, 0i128), Ok(0));
+        assert_eq!(checked_sub(-5i128, -10i128), Ok(5));
+        assert_eq!(checked_sub(i128::MIN + 1, 1), Ok(i128::MIN));
     }
 
     #[test]
@@ -210,10 +210,10 @@ mod tests {
     // -----------------------------------------------------------------------
     #[test]
     fn test_checked_mul_ok() {
-        assert_eq!(checked_mul(10i128, 3i128).unwrap(), 30);
-        assert_eq!(checked_mul(-5i128, 3i128).unwrap(), -15);
-        assert_eq!(checked_mul(0i128, 100i128).unwrap(), 0);
-        assert_eq!(checked_mul(1i128, 1i128).unwrap(), 1);
+        assert_eq!(checked_mul(10i128, 3i128), Ok(30));
+        assert_eq!(checked_mul(-5i128, 3i128), Ok(-15));
+        assert_eq!(checked_mul(0i128, 100i128), Ok(0));
+        assert_eq!(checked_mul(1i128, 1i128), Ok(1));
     }
 
     #[test]
@@ -227,9 +227,9 @@ mod tests {
     // -----------------------------------------------------------------------
     #[test]
     fn test_checked_div_ok() {
-        assert_eq!(checked_div(30i128, 3i128).unwrap(), 10);
-        assert_eq!(checked_div(-30i128, 3i128).unwrap(), -10);
-        assert_eq!(checked_div(0i128, 100i128).unwrap(), 0);
+        assert_eq!(checked_div(30i128, 3i128), Ok(10));
+        assert_eq!(checked_div(-30i128, 3i128), Ok(-10));
+        assert_eq!(checked_div(0i128, 100i128), Ok(0));
     }
 
     #[test]
@@ -286,9 +286,9 @@ mod tests {
     // -----------------------------------------------------------------------
     #[test]
     fn test_checked_add_u64_ok() {
-        assert_eq!(checked_add_u64(5u64, 3u64).unwrap(), 8);
-        assert_eq!(checked_add_u64(0u64, 0u64).unwrap(), 0);
-        assert_eq!(checked_add_u64(u64::MAX - 1, 1).unwrap(), u64::MAX);
+        assert_eq!(checked_add_u64(5u64, 3u64), Ok(8));
+        assert_eq!(checked_add_u64(0u64, 0u64), Ok(0));
+        assert_eq!(checked_add_u64(u64::MAX - 1, 1), Ok(u64::MAX));
     }
 
     #[test]

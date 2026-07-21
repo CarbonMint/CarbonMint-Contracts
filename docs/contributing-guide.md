@@ -22,6 +22,8 @@ Contract changes may include:
   behavior that affects state transitions or public API surface.
 - Keep changes aligned with the repository's Soroban/Soroban SDK 21.x setup and
   the existing contract conventions around checked arithmetic, auth, and errors.
+- Prefer returning explicit `Result`/`Error` values over panicking helpers such as
+  `unwrap()` or `expect()` in contract-facing code and tests.
 
 ## Recommended workflow
 
