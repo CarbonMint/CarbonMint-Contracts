@@ -8,6 +8,9 @@ CarbonMint lets issuers register batches of carbon credits, list them for sale,
 sell them to buyers, and lets holders permanently **retire** credits in exchange
 for an on-chain retirement certificate.
 
+For contributor guidance on contract changes, tests, and review expectations,
+see [docs/contributing-guide.md](docs/contributing-guide.md).
+
 ## Model
 
 Credits are **semi-fungible**: every credit within the same batch is
