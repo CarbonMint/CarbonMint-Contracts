@@ -29,6 +29,12 @@ breakdown. Before proceeding, confirm:
 - [ ] Run `make fmt-check` – formatting is clean.
 - [ ] Confirm the `Cargo.toml` version accurately reflects the release.
 - [ ] Tag the release commit in git.
+- [ ] Complete the rollback readiness record described in the
+      [rollback procedure](rollback-procedure.md), including the retained
+      contract ID, WASM hash, state checks, integration owners, and cutover
+      ledger.
+- [ ] Confirm the retained deployment and required storage entries are
+      accessible and have sufficient TTL for the rollback window.
 
 ## Deployment
 

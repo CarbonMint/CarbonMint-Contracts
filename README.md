@@ -120,6 +120,11 @@ make optimize
 make deploy NETWORK=testnet SOURCE=default
 ```
 
+Before a production release, complete the readiness checks in the
+[rollback procedure](docs/rollback-procedure.md). CarbonMint currently rolls
+back by routing integrations to a retained deployment; it does not support an
+in-place WASM rollback.
+
 ## Verify deployed WASM hash
 
 After deploying, you can verify that the WASM binary on the ledger matches
