@@ -1034,3 +1034,36 @@ fn test_double_initialize_is_rejected() {
     let rogue = Address::generate(&env);
     client.initialize(&rogue);
 }
+
+/// The rollback runbook is an operational control. Keep its critical safety
+/// constraints and its README entry covered by the standard test suite so a
+/// later documentation cleanup cannot silently remove them.
+#[test]
+fn test_rollback_runbook_documents_safety_constraints() -> Result<(), &'static str> {
+    let runbook = include_str!("../docs/rollback-procedure.md");
+    let readme = include_str!("../README.md");
+    let required_guidance = [
+        "does not provide an in-place WASM upgrade entrypoint",
+        "`set_paused(true)`",
+        "blocks only",
+        "--send=no",
+        "A routing cutback alone is not a state rollback",
+        "Do not automatically replay failed or",
+        "ambiguous requests",
+        "## Reconcile writes",
+        "## Validate and close",
+    ];
+
+    if required_guidance
+        .iter()
+        .any(|guidance| !runbook.contains(guidance))
+    {
+        return Err("rollback runbook is missing required safety guidance");
+    }
+
+    if !readme.contains("[rollback procedure](docs/rollback-procedure.md)") {
+        return Err("README does not link to the rollback runbook");
+    }
+
+    Ok(())
+}
