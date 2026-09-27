@@ -1,9 +1,14 @@
 use soroban_sdk::{
+    symbol_short,
     testutils::{Address as _, AuthorizedFunction, Events},
-    vec, Address, Env, IntoVal, String, Symbol,
+    vec, Address, Env, IntoVal, String, Symbol, TryIntoVal,
 };
 
 use crate::bench_support::setup_contract;
+use crate::events::{
+    parse_mint_event, parse_retirement_event, parse_trade_event, parse_transfer_event,
+    MintEvent, ParseError, RetirementEvent, TradeEvent, TransferEvent, EVENT_SCHEMA_VERSION,
+};
 use crate::fuzz_harness::setup_contract as setup_fuzz_contract;
 use crate::types::TransferItem;
 use crate::{CarbonMintContract, CarbonMintContractClient};
@@ -973,7 +978,7 @@ fn test_retire_then_over_retire_is_rejected() {
     client.initialize(&admin);
 
     let issuer = Address::generate(&env);
-    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &10_000, &5);
+    let _id = client.mint_batch(&issuer, &project_id(&env), &2024, &10_000, &5);
 
     // Build 51 recipients (MAX_RECIPIENTS is 50).
     let mut recipients = vec![&env];
@@ -1066,4 +1071,209 @@ fn test_rollback_runbook_documents_safety_constraints() -> Result<(), &'static s
     }
 
     Ok(())
+}
+
+#[test]
+fn test_mint_event_schema_and_parser() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+    assert_eq!(id, 1);
+
+    let events = env.events().all();
+    assert!(!events.is_empty());
+
+    let last_event = events.last().unwrap();
+    let payload: MintEvent = last_event.2.try_into_val(&env).unwrap();
+
+    assert_eq!(payload.version, EVENT_SCHEMA_VERSION);
+    assert_eq!(payload.batch_id, 1);
+    assert_eq!(payload.quantity, 1_000);
+    assert_eq!(payload.unit, symbol_short!("tCO2e"));
+    assert_eq!(payload.issuer, issuer);
+    assert_eq!(payload.project_id, project_id(&env));
+    assert_eq!(payload.vintage, 2024);
+    assert_eq!(payload.outcome, symbol_short!("minted"));
+
+    let parsed = parse_mint_event(&payload).expect("valid mint event should parse");
+    assert_eq!(parsed, payload);
+}
+
+#[test]
+fn test_transfer_event_schema_and_parser() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let issuer = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    let id = client.mint_batch(&issuer, &project_id(&env), &2024, &1_000, &5);
+
+    client.transfer(&issuer, &recipient, &id, &300);
+
+    let events = env.events().all();
+    let last_event = events.last().unwrap();
+    let payload: TransferEvent = last_event.2.try_into_val(&env).unwrap();
+
+    assert_eq!(payload.version, EVENT_SCHEMA_VERSION);
+    assert_eq!(payload.batch_id, 1);
+    assert_eq!(payload.quantity, 300);
+    assert_eq!(payload.unit, symbol_short!("tCO2e"));
+    assert_eq!(payload.from, issuer);
+    assert_eq!(payload.to, recipient);
+    assert_eq!(payload.outcome, symbol_short!("transfer"));
+
+    let parsed = parse_transfer_event(&payload).expect("valid transfer event should parse");
+    assert_eq!(parsed, payload);
+}
+
+#[test]
+fn test_trade_event_schema_and_parser() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let seller = Address::generate(&env);
+    let buyer = Address::generate(&env);
+    let id = client.mint_batch(&seller, &project_id(&env), &2024, &1_000, &10);
+
+    client.buy(&buyer, &id, &50);
+
+    let events = env.events().all();
+    let last_event = events.last().unwrap();
+    let payload: TradeEvent = last_event.2.try_into_val(&env).unwrap();
+
+    assert_eq!(payload.version, EVENT_SCHEMA_VERSION);
+    assert_eq!(payload.batch_id, 1);
+    assert_eq!(payload.quantity, 50);
+    assert_eq!(payload.unit, symbol_short!("tCO2e"));
+    assert_eq!(payload.buyer, buyer);
+    assert_eq!(payload.seller, seller);
+    assert_eq!(payload.unit_price, 10);
+    assert_eq!(payload.total_price, 500);
+    assert_eq!(payload.outcome, symbol_short!("settled"));
+
+    let parsed = parse_trade_event(&payload).expect("valid trade event should parse");
+    assert_eq!(parsed, payload);
+}
+
+#[test]
+fn test_retirement_event_schema_and_parser() {
+    let (env, client, admin) = setup();
+    env.mock_all_auths();
+    client.initialize(&admin);
+
+    let holder = Address::generate(&env);
+    let id = client.mint_batch(&holder, &project_id(&env), &2024, &1_000, &5);
+
+    let beneficiary = String::from_str(&env, "GreenCorp-ESG-2024");
+    let cert_id = client.retire_for(&holder, &id, &200, &beneficiary);
+    assert_eq!(cert_id, 1);
+
+    let events = env.events().all();
+    let last_event = events.last().unwrap();
+    let payload: RetirementEvent = last_event.2.try_into_val(&env).unwrap();
+
+    assert_eq!(payload.version, EVENT_SCHEMA_VERSION);
+    assert_eq!(payload.batch_id, 1);
+    assert_eq!(payload.quantity, 200);
+    assert_eq!(payload.unit, symbol_short!("tCO2e"));
+    assert_eq!(payload.holder, holder);
+    assert_eq!(payload.certificate_id, 1);
+    assert_eq!(payload.beneficiary, beneficiary);
+    assert_eq!(payload.outcome, symbol_short!("burned"));
+
+    let parsed = parse_retirement_event(&payload).expect("valid retirement event should parse");
+    assert_eq!(parsed, payload);
+}
+
+#[test]
+fn test_event_parsers_reject_incompatible_payloads() {
+    let env = Env::default();
+    let addr1 = Address::generate(&env);
+    let addr2 = Address::generate(&env);
+
+    // Unsupported version
+    let bad_version = MintEvent {
+        version: 99,
+        batch_id: 1,
+        quantity: 100,
+        unit: symbol_short!("tCO2e"),
+        issuer: addr1.clone(),
+        project_id: project_id(&env),
+        vintage: 2024,
+        outcome: symbol_short!("minted"),
+    };
+    assert_eq!(
+        parse_mint_event(&bad_version),
+        Err(ParseError::UnsupportedVersion(99))
+    );
+
+    // Non-positive quantity
+    let zero_qty = MintEvent {
+        version: EVENT_SCHEMA_VERSION,
+        batch_id: 1,
+        quantity: 0,
+        unit: symbol_short!("tCO2e"),
+        issuer: addr1.clone(),
+        project_id: project_id(&env),
+        vintage: 2024,
+        outcome: symbol_short!("minted"),
+    };
+    assert_eq!(
+        parse_mint_event(&zero_qty),
+        Err(ParseError::InvalidQuantity)
+    );
+
+    // Ambiguous / invalid unit
+    let wrong_unit = TransferEvent {
+        version: EVENT_SCHEMA_VERSION,
+        batch_id: 1,
+        quantity: 50,
+        unit: symbol_short!("lbs"),
+        from: addr1.clone(),
+        to: addr2.clone(),
+        outcome: symbol_short!("transfer"),
+    };
+    assert_eq!(
+        parse_transfer_event(&wrong_unit),
+        Err(ParseError::InvalidUnit)
+    );
+
+    // Invalid outcome
+    let wrong_outcome = TradeEvent {
+        version: EVENT_SCHEMA_VERSION,
+        batch_id: 1,
+        quantity: 10,
+        unit: symbol_short!("tCO2e"),
+        buyer: addr1.clone(),
+        seller: addr2.clone(),
+        unit_price: 5,
+        total_price: 50,
+        outcome: symbol_short!("failed"),
+    };
+    assert_eq!(
+        parse_trade_event(&wrong_outcome),
+        Err(ParseError::InvalidOutcome)
+    );
+
+    // Negative price
+    let neg_price = TradeEvent {
+        version: EVENT_SCHEMA_VERSION,
+        batch_id: 1,
+        quantity: 10,
+        unit: symbol_short!("tCO2e"),
+        buyer: addr1.clone(),
+        seller: addr2.clone(),
+        unit_price: -5,
+        total_price: 50,
+        outcome: symbol_short!("settled"),
+    };
+    assert_eq!(
+        parse_trade_event(&neg_price),
+        Err(ParseError::InvalidPrice)
+    );
 }
