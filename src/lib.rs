@@ -168,7 +168,7 @@ impl CarbonMintContract {
         storage::set_total_minted(&env, total_minted);
         storage::extend_instance(&env);
 
-        events::minted(&env, &issuer, id, amount);
+        events::minted(&env, &issuer, id, amount, &batch.project_id, vintage);
         Ok(id)
     }
 
@@ -519,6 +519,6 @@ fn retire_credits(
     storage::set_retirement_counter(env, cert_id);
     storage::extend_instance(env);
 
-    events::retired(env, holder, batch_id, amount, cert_id);
+    events::retired(env, holder, batch_id, amount, cert_id, &cert.beneficiary);
     Ok(cert_id)
 }
